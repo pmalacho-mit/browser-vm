@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "Browser VM Network Bridge",
+  "version": "0.1.0",
+  "description": "Lets the in-browser Linux VM's network gate reach websites that don't allow cross-origin requests, one site at a time, only with your approval, and never with your cookies.",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [],
+  "optional_host_permissions": [
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://gate.localhost/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Browser VM Network Bridge"
+  }
+}

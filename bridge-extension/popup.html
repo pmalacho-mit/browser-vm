@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root { color-scheme: light dark; --muted: #6b7280; --accent: #2563eb; }
+  body { font: 13px system-ui, sans-serif; margin: 0; padding: 12px 14px; width: 320px; }
+  h1 { font-size: 14px; margin: 0 0 4px; }
+  p { color: var(--muted); margin: 0 0 10px; line-height: 1.4; }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 14px 0 6px; }
+  ul { list-style: none; margin: 0; padding: 0; }
+  li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-top: 1px solid #8883; }
+  code { font-size: 12px; overflow-wrap: anywhere; }
+  button { font: inherit; padding: 3px 10px; border-radius: 4px; border: 1px solid #8886; background: none; cursor: pointer; }
+  button.allow { background: var(--accent); border-color: var(--accent); color: white; }
+  .empty { color: var(--muted); padding: 4px 0; }
+</style>
+</head>
+<body>
+  <h1>Browser VM Network Bridge</h1>
+  <p>Code in the VM asked to reach these sites. Allowed sites get anonymous
+     requests only (never your cookies or logins), and only over HTTPS.</p>
+  <h2>Waiting for approval</h2>
+  <ul id="pending"></ul>
+  <h2>Allowed</h2>
+  <ul id="allowed"></ul>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>
