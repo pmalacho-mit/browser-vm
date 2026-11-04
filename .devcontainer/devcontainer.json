@@ -1,0 +1,60 @@
+// Development container for browser-linux-ide.
+//
+// Everything the npm scripts need:
+//   npm run build / start / test:*   Node 22
+//   npm run tls                      Go (tls/main.go → tls.wasm)
+//   npm run kernel                   gcc, make, flex, bison, bc, lz4 (builds natively, no Docker)
+//   npm run guest                    Docker (docker build/export of guest/Dockerfile)
+//   browser testing                  Playwright + headless Chromium
+//
+// Uses "image" + features rather than a Dockerfile, so it also works in
+// proxied/isolated setups that need to derive a CA-trusting base image.
+{
+  "name": "browser-linux-ide",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
+
+  "features": {
+    "ghcr.io/devcontainers/features/go:1": { "version": "1.24" },
+    // `npm run guest` only needs a Docker daemon to build and export the guest image.
+    // Outside-of-docker uses the daemon you give the container (host or sandboxed);
+    // swap in "docker-in-docker:2" if you'd rather have a private one.
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+  },
+
+  // The IDE must be opened at http://localhost:<port>: webviews use
+  // <hash>.localhost and the network gate uses gate.localhost, both of which
+  // browsers resolve to loopback, so one forwarded port serves all three.
+  "forwardPorts": [8080, 8081],
+  "portsAttributes": {
+    "8080": { "label": "IDE (open via localhost, not 127.0.0.1)", "onAutoForward": "notify" },
+    // Same files, second origin: the network gate when the forwarder routes one
+    // exact hostname per port (desolate). See IDE_URL/GATE_URL in build-site.mjs.
+    "8081": { "label": "Network gate", "onAutoForward": "silent" }
+  },
+
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+
+  // Kernel builds (npm run kernel) want a few GB of RAM and ~2.5 GB of disk.
+  "hostRequirements": { "memory": "6gb", "storage": "16gb" },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "ms-azuretools.vscode-docker"
+      ],
+      "settings": {
+        // build/ holds the Linux source tree after `npm run kernel`; keep the
+        // watcher and search out of it, and out of generated output.
+        "files.watcherExclude": { "**/build/**": true, "**/dist/**": true, "**/node_modules/**": true },
+        "search.exclude": { "**/build": true, "**/dist": true, "guest/prebuilt/guest/rootfs": true, "tls/prebuilt": true }
+      }
+    },
+    // For desolate (isolated-devcontainers-suede): forwarded port, and enough
+    // memory for kernel builds plus a running VM.
+    "desolate": {
+      "ports": [8080, 8081],
+      "memory": "8g"
+    }
+  }
+}

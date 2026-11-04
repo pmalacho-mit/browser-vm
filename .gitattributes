@@ -1,0 +1,4 @@
+*.zst    binary
+*.wasm   binary
+*.bin    binary
+bzImage  binary
