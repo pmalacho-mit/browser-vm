@@ -1,0 +1,24 @@
+{
+  "name": "browser-linux-ide",
+  "version": "0.1.0",
+  "description": "VS Code (Code-OSS) + a Linux VM, running entirely client-side in the browser",
+  "scripts": {
+    "build": "node scripts/build-site.mjs",
+    "build:desolate": "IDE_URL=${DESOLATE_EXTERNAL_8080_URL:?port 8080 is not forwarded by desolate} GATE_URL=${DESOLATE_EXTERNAL_8081_URL:?port 8081 is not forwarded by desolate - rebuild the container} node scripts/build-site.mjs",
+    "start": "node scripts/serve.mjs dist 8080 8081",
+    "guest": "guest/build-rootfs.sh",
+    "kernel": "guest/build-kernel.sh",
+    "test:boot": "node scripts/boot-test.mjs",
+    "tls": "tls/build.sh",
+    "test:gate": "node scripts/gate-test.mjs",
+    "profile:boot": "node scripts/boot-profile.mjs 128"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "esbuild": "^0.25.12",
+    "v86": "^0.5.472",
+    "vscode-web": "^1.91.1"
+  },
+  "private": true,
+  "type": "module"
+}

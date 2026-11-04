@@ -1,0 +1,64 @@
+#!/bin/sh
+# PID 1 of the browser VM. The kernel is booted with `init=/sbin/vm-init`,
+# so we don't depend on the distro's init system (openrc/systemd/...) and any
+# i386 container image works as the root filesystem.
+#
+#   ttyS0, ttyS2, ttyS3  ->  VS Code terminals (interactive login shells)
+#   ttyS1                ->  control channel to the VS Code extension (vm-agent)
+
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+export HOME=/root TERM=xterm-256color LANG=C.UTF-8
+
+mount -t proc     proc   /proc
+mount -t sysfs    sysfs  /sys
+mount -t devtmpfs dev    /dev 2>/dev/null
+mkdir -p /dev/pts /dev/shm
+mount -t devpts   devpts /dev/pts
+mount -t tmpfs    tmpfs  /dev/shm
+mount -t tmpfs    tmpfs  /tmp
+mount -t tmpfs    tmpfs  /run
+hostname "${VM_HOSTNAME:-browser-vm}"   # /etc/hostname, /etc/hosts and /etc/resolv.conf are
+printf '127.0.0.1\tlocalhost %s\n' "$(hostname)" >/etc/hosts   # managed by docker, so not exported
+ip link set lo up 2>/dev/null || ifconfig lo up 2>/dev/null
+
+# Network (present when the extension enables it). The "router" at .1 is v86's
+# fake network stack in JavaScript: it answers ARP and DNS, and HTTP/HTTPS
+# connections are replayed with the browser's fetch() (see extension/src/net.js).
+# Static addressing: v86's defaults, and no DHCP round trip during boot.
+if [ -e /sys/class/net/eth0 ]; then
+  ip link set eth0 up
+  ip addr add 192.168.86.100/24 dev eth0
+  ip route add default via 192.168.86.1
+  echo "nameserver 192.168.86.1" >/etc/resolv.conf
+  # The extension drops this tab's CA certificate here before boot. HTTPS
+  # connections terminate in the browser with certificates signed by it.
+  ca=/etc/ssl/certs/browser-vm-ca.pem
+  if [ -s "$ca" ] && [ -f /etc/ssl/certs/ca-certificates.crt ]; then
+    cat "$ca" >>/etc/ssl/certs/ca-certificates.crt
+  fi
+fi
+
+# Linux runs a loopback self-test on COM4 only (asm/serial.h: no UPF_SKIP_TEST),
+# which v86's UART doesn't emulate, so ttyS3 probes as "unknown". Declare it.
+setserial /dev/ttyS3 uart 16550A 2>/dev/null
+
+# Control channel. Raw mode so bytes pass through untouched.
+stty -F /dev/ttyS1 raw -echo 115200
+/sbin/vm-agent </dev/ttyS1 >/dev/ttyS1 2>&1 &
+
+# One respawning login shell per console. `setsid -c` makes the tty the
+# shell's controlling terminal, which is what gives you job control and Ctrl+C.
+console() {
+  stty -F "/dev/$1" sane 115200
+  while true; do
+    setsid -c /bin/sh -c 'cd /root/project 2>/dev/null || cd /root; exec /bin/sh -l' \
+      <"/dev/$1" >"/dev/$1" 2>&1
+    sleep 1
+  done
+}
+console ttyS0 &
+console ttyS2 &
+console ttyS3 &
+
+# PID 1 must never exit; `wait` also reaps orphaned processes.
+while true; do wait; sleep 1; done

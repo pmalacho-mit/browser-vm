@@ -1,0 +1,32 @@
+#!/bin/sh
+# Tiny line-based RPC agent on /dev/ttyS1, talking to the VS Code extension.
+#   request:  <id> <command> [args...]\n
+#   reply:    <id> ok|err [data]\n
+#
+# This is the VM's "control plane": things a terminal byte stream can't
+# carry (window sizes, hang-ups). Add your own commands here.
+
+echo "0 ready $(uname -r)"
+while read -r id cmd a b c; do
+  case "$cmd" in
+    ping)
+      echo "$id ok pong" ;;
+    resize)    # resize <tty> <rows> <cols>
+      # TIOCSWINSZ on the console; the kernel delivers SIGWINCH to the
+      # foreground job, so vim/less/top re-layout themselves.
+      stty -F "/dev/$a" rows "$b" cols "$c" && echo "$id ok" || echo "$id err" ;;
+    hangup)    # hangup <tty>   (terminal tab closed)
+      # SIGHUP every process whose *controlling* tty is this console (the
+      # session), like a modem hangup. vm-init then respawns a fresh shell.
+      set -- $(stat -c '%t %T' "/dev/$a")
+      nr=$(( (0x$1 << 8) | 0x$2 ))
+      for st in /proc/[0-9]*/stat; do
+        read -r line 2>/dev/null <"$st" || continue   # process may have exited
+        set -- ${line##*) }          # fields after "(comm) ": state ppid pgrp sid tty_nr
+        [ "$5" = "$nr" ] && { p=${st#/proc/}; kill -HUP "${p%/stat}" 2>/dev/null; }
+      done
+      echo "$id ok" ;;
+    *)
+      echo "$id err unknown-command" ;;
+  esac
+done
