@@ -28,7 +28,7 @@
   "portsAttributes": {
     "8080": { "label": "IDE (open via localhost, not 127.0.0.1)", "onAutoForward": "notify" },
     // Same files, second origin: the network gate when the forwarder routes one
-    // exact hostname per port (desolate). See IDE_URL/GATE_URL in build-site.mjs.
+    // exact hostname per port (desolate). See IDE_URL/GATE_URL in tools/lib/app.mjs.
     "8081": { "label": "Network gate", "onAutoForward": "silent" }
   },
 

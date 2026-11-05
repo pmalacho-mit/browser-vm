@@ -112,7 +112,7 @@ await sh("cat /lib/apk/db/installed > /dev/null; cat /lib/apk/db/installed > /de
 check("file read twice is fetched once (blob cache)", cache.fetches - fetchesBefore === 1,
   `${cache.fetches - fetchesBefore} fetch(es); boot fetched ${cache.fetches - 1} files, ${(cache.memoryBytes / 1e6).toFixed(1)} MB cached`);
 
-// control channel (guest/agent)
+// control channel (runtime/guest/agent)
 const resized = await agent.request({ cmd: "resize", tty: "ttyS0", rows: 33, cols: 101 });
 check("resize via agent", resized.ok && (await sh("stty size")) === "33 101");
 if (!goAgent) {

@@ -20,7 +20,7 @@ license: BSD-2-Clause (`LICENSE`); `src/floppy.js` contains MIT-licensed code (`
 | `v86-fallback.wasm` | `5adb41cdebe97570a4374268594f2619ef9ccf5c5a41ad44f8404818e9e8690c` | the same without SIMD/bulk memory, for engines lacking them |
 
 The checksums match the digests GitHub records for the release assets, checked
-on 2026-11-05 by `npm run v86_64` (`V86_64_REPO=pmalacho-mit/v86_64` then; now
+on 2026-11-05 by `npm run v86_64` (now `npm run emulator:x86_64`; `V86_64_REPO=pmalacho-mit/v86_64` then, now
 the default). The release also has `v86-mem64.wasm` and debug builds, which
 this project doesn't use.
 

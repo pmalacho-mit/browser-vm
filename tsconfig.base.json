@@ -1,6 +1,6 @@
 {
   // Shared settings. TypeScript only type-checks (noEmit); esbuild does all
-  // compiling (scripts/esbuild.config.mjs), and Node runs the .ts files the
+  // compiling (each package's build.mjs, run by tools/), and Node runs the .ts files the
   // tests import directly (--experimental-strip-types). Hence:
   //   erasableSyntaxOnly  - no enums/namespaces/parameter properties, so Node
   //                         can strip types without transforming code

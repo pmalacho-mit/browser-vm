@@ -5,17 +5,17 @@ refuse browser requests (no CORS headers), such as `git clone` from github.com.
 The user approves each site. Without the extension, the VM can still reach every
 site that allows CORS, which covers most package registries.
 
-The main README has the security model under "Optional: the network bridge
-extension". This file covers the code.
+The security model is in `gates/README.md`, under "The bridge extension".
+This file covers the code.
 
 ## How it fits in
 
 The extension never talks to the VM or the IDE. Only the network gate
-(`web/gate/`) uses it, and only after the gate has applied its own network
+(the gate app, `gates/web/app/`) uses it, and only after the gate has applied its own network
 policy and substituted secrets:
 
 ```
-gate (web/gate/gate.ts): fetch() fails with a CORS error, method is GET or HEAD
+gate (gates/web/app/gate.ts): fetch() fails with a CORS error, method is GET or HEAD
   → window.postMessage  ─► content.js   (injected by Chrome only into the gate's origin)
   → runtime port "vm-net" ─► background.js (service worker)
   → policy.js refuse() + "is this host approved?" (chrome.permissions)
@@ -34,8 +34,9 @@ gate (web/gate/gate.ts): fetch() fails with a CORS error, method is GET or HEAD
 ## Load it for development
 
 1. `chrome://extensions` → turn on *Developer mode* → *Load unpacked* → pick
-   `build/bridge-extension/`. `npm run build` writes it: this folder with the
-   gate's origin filled in (from `GATE_URL`, or `gate.localhost:8080`). For
+   `dist/<app>/bridge-extension/`. `npm run build` writes it (gates/web/build.mjs):
+   this folder with the app's gate origin filled in (from `GATE_URL`, or
+   `gate.localhost:8080`). For
    local development you can also load this folder directly.
 2. Start the IDE (`npm run dev` or `npm start`) and open it at `http://localhost:8080`.
 3. In the VM, request a site that refuses CORS. The extension's badge shows a
@@ -47,8 +48,8 @@ its own.
 
 ## Configure it for a deployment
 
-`npm run build` fills in the gate's origin in `build/bridge-extension/`, from
-`GATE_URL`. In this folder it's hardcoded in **two places that must agree**,
+`npm run build` fills in the gate's origin in `dist/<app>/bridge-extension/`,
+from `GATE_URL`. In this folder it's hardcoded in **two places that must agree**,
 both `gate.localhost` (local development):
 
 - `APP_ORIGINS` in `policy.js`: the exact origin, including the port
@@ -73,20 +74,20 @@ There are good reasons to convert it later:
 - **It's security code.** `policy.js` decides which sites may be fetched, and
   `background.js` checks who's asking. Type checking helps most here.
 - **It speaks the same message format as the gate** (`head` / `chunk` / `end` /
-  `error`; see `bridge` in `web/gate/gate.ts`). Nothing currently checks that the
+  `error`; see `bridge` in `gates/web/app/gate.ts`). Nothing currently checks that the
   two sides agree. With a shared type, a mismatch becomes a compile error.
-- **The build setup already exists.** It would be one more entry in
-  `scripts/esbuild.config.mjs`.
+- **The build setup already exists.** It would be one more bundle in the web
+  gate's part, `gates/web/build.mjs`.
 
 ### Option 1: convert to TypeScript (the fuller fix)
 
 - Rename the scripts to `.ts`, add `@types/chrome` as a dev dependency, and add
-  a `bridge-extension/tsconfig.json` extending `../tsconfig.base.json`.
-- Add an esbuild target that writes `dist/bridge-extension/` (scripts as ES
+  a `bridge-extension/tsconfig.json` extending `../../../tsconfig.base.json`.
+- Add a bundle to `gates/web/build.mjs` that writes `dist/<app>/bridge-extension/` (scripts as ES
   modules, plus `manifest.json` and `popup.html` copied as they are).
   `npm run dev` then rebuilds it on change.
-- *Load unpacked* points at `dist/bridge-extension/` instead of this folder.
-- Move the bridge message types into `types/` next to `gate-protocol.ts`, and
+- *Load unpacked* points at `dist/<app>/bridge-extension/`, as it does now.
+- Move the bridge message types into `gates/web/src/protocol.ts`, and
   use them in both `background.ts` and the gate.
 
 ### Option 2: type-check in place (no build step)
@@ -94,5 +95,5 @@ There are good reasons to convert it later:
 Keep the `.js` files and add a `bridge-extension/tsconfig.json` with `checkJs`
 and `@types/chrome`, plus `tsc -p bridge-extension` in `npm run typecheck`.
 You'd get type checking, and shared message types through JSDoc
-(`@typedef {import("../types/…").…}`), while still loading this folder directly.
+(`@typedef {import("../src/protocol.ts").…}`), while still loading this folder directly.
 The gate origin is already generated at build time either way.

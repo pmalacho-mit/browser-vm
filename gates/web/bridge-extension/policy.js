@@ -1,6 +1,6 @@
 // Shared by background.js and popup.js. Edit APP_ORIGINS (and the
 // content_scripts "matches" in manifest.json) to the origin(s) your network
-// GATE is served on (web/gate/). Only the gate talks to this extension: it has
+// GATE is served on (gates/web/app/). Only the gate talks to this extension: it has
 // already applied the network policy and substituted secrets.
 export const APP_ORIGINS = ["http://gate.localhost:8080"];
 

@@ -174,7 +174,7 @@ rt.on("fs", (changes: FsChange[]) => {
 // ---- previews ----------------------------------------------------------------------
 //
 // A server in the VM (listening on 0.0.0.0) opens in an iframe on its own origin
-// (web/__vm_preview__/); see web/runtime-host.ts.
+// (host/preview/); see host/src/runtime-host.ts.
 
 function openPreview(port: number) {
   if (!window.__vmPreviewUrl) return term.write(`\r\n\x1b[33mThis site has no preview origin (PREVIEW_URL).\x1b[0m\r\n`);

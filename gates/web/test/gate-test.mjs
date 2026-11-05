@@ -1,4 +1,4 @@
-// Unit tests for the gate's decisions (web/gate/core.js). `npm run test:gate`
+// Unit tests for the gate's decisions (gates/core) and the web gate's vault (app/vault.ts). `npm run test:gate`
 import assert from "node:assert/strict";
 import { createVault, unlockVault, addMethod, removeMethod, methodsOf, sealValue, openValue } from "../app/vault.ts";
 import { validate, decide, applySecrets, makeScrubber, hostPatternProblem, hostMatches, refuseDestination, forwardHeaders, quotaCheck } from "@browser-vm/gate-core";

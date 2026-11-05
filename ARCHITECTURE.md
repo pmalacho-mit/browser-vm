@@ -1,5 +1,8 @@
 # Architecture
 
+This is the map of the layers and the contracts between them. Each layer's
+README has the details; the top-level README has the commands.
+
 browser-vm is a platform for building **browser VMs**: web pages that run a real
 Linux computer inside the visitor's browser, with an editor (or an agent)
 attached, and a network the user controls. Everything runs client-side; a build
@@ -72,8 +75,9 @@ guest request through it. No gate, no network.
 
 ### 4. Gates: the VM's only way out (`gates/`)
 
-A `Gate` is `fetch()` plus a few hooks: it decides which guest requests leave,
-and may substitute secrets the guest only knows as placeholders.
+A `Gate` is `fetch()` plus a few hooks (`connect` for notices and secret
+placeholders, `show` for its UI): it decides which guest requests leave, and
+may substitute secrets the guest only knows as placeholders.
 
 | Gate | Where it runs | Used by |
 |---|---|---|
@@ -125,7 +129,7 @@ export default {
 | App | What it is |
 |---|---|
 | `apps/ide` | VS Code at `/`, lite at `/lite/`, every playground, the web gate (what this repo deploys) |
-| `apps/python` | lite only, starting in the Python playground |
+| `apps/python` | lite only, starting in the Python playground, no previews |
 
 ## The build
 
@@ -166,7 +170,11 @@ tools     ← every package's part          apps     ← nothing (config only)
 ```
 
 Each package's `package.json` `exports` is its public API; TypeScript, esbuild
-and Node all refuse deep imports past it.
+and Node all refuse deep imports past it. The runtime also exports
+`./internals/*` for image builders and boot tests, which drive v86 directly.
+One edge is type-only: each package's `build.mjs` takes its `Part` and
+`BuildContext` types from `@browser-vm/tools` (JSDoc), the way a plugin takes
+its host's types.
 
 ## Adding to the platform
 
@@ -186,23 +194,23 @@ and Node all refuse deep imports past it.
 |---|---|
 | `runtime/src/*` | `runtime/src/*` (`worker.ts` → `host/runtime-frame/`) |
 | `runtime/src/gate-client.ts`, `types/gate-protocol.ts` | `gates/web/src/client.ts`, `gates/web/src/protocol.ts` |
-| `web/gate/*` | `gates/web/app/*`; `core.ts` → `gates/core/src/` |
+| `web/gate/*` | `gates/web/app/*`; `core.ts` → `gates/core/src/`, `defaultPolicy` → `gates/core/src/default-policy.ts` |
 | `web/gate-relay.ts` | `gates/web/src/relay.ts` |
 | `bridge-extension/` | `gates/web/bridge-extension/` |
-| `web/runtime/*`, `web/runtime-host.ts`, `web/__vm_preview__/*` | `host/` |
+| `web/runtime/*`, `web/runtime-host.ts`, `web/__vm_preview__/*`, `web/globals.d.ts` | `host/` (`runtime-frame/`, `src/`, `preview/`, `types/`) |
 | `web/index.html`, `web/boot.ts`, `web/amd-config.ts`, `extension/` | `surfaces/vscode/` |
 | `web/lite/` | `surfaces/lite/` |
 | `mcp/` | `surfaces/mcp/` (its policy gate → `gates/node/`) |
 | `guest/vm-init`, `guest/vm-agent`, `guest/agent/` | `runtime/guest/` |
 | `tls/`, `vendor/go/` | `runtime/tls/` |
-| `guest/Dockerfile`, `overlay/`, `welcome/`, `build-rootfs.sh` | `images/base/` |
+| `guest/Dockerfile`, `overlay/`, `welcome/`, `build-rootfs.sh` | `images/base/` (`build.sh`; vm-init and vm-agent come in as a second build context) |
 | `playgrounds/` | `images/playgrounds/` |
 | `scripts/build-playgrounds.mjs`, `tools/*.py` | `images/builder/` |
 | `guest/build-kernel.sh`, `guest/kernel*.config` | `machines/kernel/`, `machines/<arch>/` |
 | `vendor/seabios.bin`, `vgabios.bin` | `machines/firmware/` |
-| `vendor/v86_64/`, `scripts/fetch-v86_64.mjs`, `build-v86_64.sh` | `machines/x86_64/` |
+| `vendor/v86_64/`, `scripts/fetch-v86_64.mjs`, `build-v86_64.sh` | `machines/x86_64/` (`emulator/`, `fetch-emulator.mjs`, `build-emulator.sh`) |
 | `guest/prebuilt/` | split by owner: kernels → `machines/<arch>/prebuilt/`, base images → `images/base/prebuilt/`, agent → `runtime/guest/prebuilt/` |
-| `scripts/targets.mjs` | `machines/index.mjs` (+ `images/index.mjs`, `runtime/guest/index.mjs`) |
+| `scripts/targets.mjs` | `machines/index.mjs` (+ `images/index.mjs` for images, `runtime/assets.mjs` for the agent and `tls.wasm`) |
 | `scripts/build-site.mjs`, `esbuild.config.mjs`, `dev.mjs`, `serve.mjs` | `tools/` and each package's `build.mjs` |
-| `scripts/*-test.mjs` | next to what they test: `gates/test/`, `runtime/test/`, `surfaces/mcp/test/`, `apps/ide/test/` |
+| `scripts/*-test.mjs` | next to what they test: `gates/web/test/` (gate), `images/test/` (boot, profile, compare machines), `runtime/test/` (runtime), `surfaces/mcp/test/` (mcp), `apps/ide/test/` (e2e) |
 | `dist/` (one folder, served on every origin) | `dist/<app>/{site,gate,preview}/` |
