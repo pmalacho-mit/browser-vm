@@ -37,6 +37,12 @@
         "icon": "$(terminal-linux)"
       },
       {
+        "command": "linuxVm.openPlayground",
+        "title": "Open a Playground…",
+        "category": "Linux VM",
+        "icon": "$(beaker)"
+      },
+      {
         "command": "linuxVm.showLog",
         "title": "Show Boot Log",
         "category": "Linux VM"
@@ -97,6 +103,12 @@
           "type": "string",
           "default": "",
           "description": "Set by the host page: BroadcastChannel name of the network gate relay.",
+          "scope": "machine"
+        },
+        "linuxVm.playground": {
+          "type": "string",
+          "default": "",
+          "description": "Set by the host page from ?playground=<id>: start that playground (a snapshot) instead of booting the default image.",
           "scope": "machine"
         }
       }

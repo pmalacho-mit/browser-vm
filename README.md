@@ -419,6 +419,38 @@ commit and why its files can be trusted: they are the fork's own CI build of
 that commit, checked against GitHub's recorded checksums. Keep 32-bit as the
 default until the fork matures or upstream v86 adopts 64-bit.
 
+## Playgrounds
+
+A playground starts from a snapshot instead of booting: a runtime installed,
+warmed up and waiting at a shell prompt, with a starter project in
+`/root/project`. Open one with `?playground=<id>`, or the VS Code command
+*Linux VM: Open a Playground…*.
+
+| Playground | What's in it | Snapshot | Page load → running (headless Chromium) |
+|---|---|---|---|
+| `python-3.12` | Python 3.12.16, pip | 17 MB, 256 MiB RAM | 3.8 s |
+| `node-24` | Node.js 24.22.1, npm 11 | 25 MB, 512 MiB RAM | 4.0 s |
+| `node-24-python-3.12` | both | 22 MB, 512 MiB RAM | 2.7 s |
+
+```
+npm run playgrounds                  # build them all into build/playgrounds/ (about 2 min each)
+npm run playgrounds -- python-3.12   # or one
+npm run build                        # ships the ones that match this build's emulator and kernel
+```
+
+Each is a folder in `playgrounds/` (manifest and starter project; see
+`playgrounds/README.md`). The builder (`scripts/build-playgrounds.mjs`) needs
+no Docker and runs on ARM hosts too: Alpine's minirootfs plus packages from
+Alpine's static `apk` for the host, the packages' install scripts run inside
+the VM, then the warm-up, then `save_state()`. All playgrounds share one
+content-addressed blob pool, so a package two of them use is stored once.
+
+When the browser restores one, the agent's `refresh` gives it this tab's clock,
+fresh randomness and the tab's CA (every copy of a snapshot starts identical).
+A snapshot only restores on the emulator and kernel it was built with, so the
+site build skips stale ones (rebuild them) and CI rebuilds them when anything
+that goes into them changes. 32-bit only for now (see "64-bit").
+
 ## Customizing the guest
 
 Edit `guest/Dockerfile` (keep the two `COPY` lines; its architecture must match

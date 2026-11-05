@@ -26,6 +26,10 @@ const ENABLE_EXTENSION_GALLERY: boolean = false;
 
 // Works from any path, e.g. https://you.github.io/some-repo/
 const pageBase = new URL(".", location.href);
+
+// ?playground=python-3.12 starts that playground (a snapshot) instead of booting
+// the default image. The extension checks that this build has it.
+const playground = new URLSearchParams(location.search).get("playground") ?? "";
 const extensionUrl = new URL("extensions/linux-vm", pageBase);
 
 // IWorkbenchConstructionOptions, read by vscode/out/vs/code/browser/workbench/workbench.js
@@ -71,6 +75,7 @@ window.product = {
     "security.workspace.trust.enabled": false,
     "extensions.ignoreRecommendations": true,
     "linuxVm.gateChannel": window.__vmGateChannel,
+    "linuxVm.playground": /^[a-z0-9][a-z0-9.-]{0,63}$/.test(playground) ? playground : "",
   },
 };
 

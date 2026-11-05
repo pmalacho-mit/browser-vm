@@ -1,0 +1,9 @@
+{
+  "title": "Node.js 24",
+  "description": "Node.js 24 with npm, on Alpine Linux 3.23.",
+  "alpine": "3.23",
+  "packages": ["nodejs", "npm"],
+  "warmup": ["node index.js", "npm --version"],
+  "memoryMB": 512,
+  "open": ["index.js"]
+}

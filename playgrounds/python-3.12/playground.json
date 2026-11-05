@@ -1,0 +1,9 @@
+{
+  "title": "Python 3.12",
+  "description": "Python 3.12 with pip, on Alpine Linux 3.23.",
+  "alpine": "3.23",
+  "packages": ["python3", "py3-pip"],
+  "warmup": ["python3 main.py", "python3 -m pip --version"],
+  "memoryMB": 256,
+  "open": ["main.py"]
+}

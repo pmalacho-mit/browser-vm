@@ -1,0 +1,9 @@
+{
+  "title": "Node.js 24 + Python 3.12",
+  "description": "Node.js 24 with npm and Python 3.12 with pip, on Alpine Linux 3.23.",
+  "alpine": "3.23",
+  "packages": ["nodejs", "npm", "python3", "py3-pip"],
+  "warmup": ["node index.js", "python3 main.py"],
+  "memoryMB": 512,
+  "open": ["index.js", "main.py"]
+}

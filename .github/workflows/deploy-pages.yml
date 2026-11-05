@@ -55,6 +55,22 @@ jobs:
       - run: npm run test:boot
       - run: npm run test:boot:x86_64
 
+      # Playgrounds (playgrounds/*): built headlessly, about 2 minutes each, and
+      # cached until anything that goes into a snapshot changes. The 64-bit VM
+      # can't have playgrounds yet (no guest agent; see README).
+      - name: Cache playgrounds
+        if: vars.VM_ARCH != 'x86_64'
+        uses: actions/cache@v4
+        with:
+          path: build/playgrounds
+          key: playgrounds-${{ hashFiles('playgrounds/**', 'guest/**', 'tools/**', 'scripts/build-playgrounds.mjs', 'scripts/targets.mjs', 'extension/src/**', 'package-lock.json', 'tls/prebuilt/**', 'vendor/*.bin') }}
+
+      - name: Build playgrounds
+        if: vars.VM_ARCH != 'x86_64'
+        run: |
+          sudo apt-get install -y -qq python3-zstandard >/dev/null
+          ls build/playgrounds/*/manifest.json >/dev/null 2>&1 || npm run playgrounds
+
       - name: Build dist/
         run: npm run build
         env:

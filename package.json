@@ -14,6 +14,7 @@
     "guest:x86_64": "VM_ARCH=x86_64 guest/build-rootfs.sh",
     "kernel": "guest/build-kernel.sh",
     "kernel:x86_64": "VM_ARCH=x86_64 guest/build-kernel.sh",
+    "playgrounds": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/build-playgrounds.mjs",
     "test:boot": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/boot-test.mjs",
     "test:boot:x86_64": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/boot-test.mjs --arch=x86_64",
     "tls": "tls/build.sh",

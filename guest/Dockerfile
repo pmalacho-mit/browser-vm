@@ -24,17 +24,6 @@ RUN if [ -n "$PACKAGES" ]; then apk add --no-cache $PACKAGES; fi
 COPY vm-init  /sbin/vm-init
 COPY vm-agent /sbin/vm-agent
 COPY welcome/  /root/project/
-RUN chmod 755 /sbin/vm-init /sbin/vm-agent /root/project/hello.sh \
- && printf '%s\n' \
-      'export PS1="\[\e[1;32m\]\u@\h\[\e[0m\]:\[\e[1;34m\]\w\[\e[0m\]\$ "' \
-      'export TERM=xterm-256color' \
-      'alias ll="ls -la"' > /root/.profile \
- && mkdir -p /etc/profile.d \
- && printf '%s\n' \
-      '# HTTPS inside the VM terminates in the browser tab, with certificates from a' \
-      '# CA made per tab (vm-init adds it to the system bundle). Tools that ship' \
-      '# their own CA list need to be pointed at it:' \
-      'export NODE_EXTRA_CA_CERTS=/etc/ssl/certs/browser-vm-ca.pem' \
-      'export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt' \
-      'export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt PIP_CERT=/etc/ssl/certs/ca-certificates.crt' \
-      > /etc/profile.d/browser-vm-network.sh
+# Shell profile and the CA settings for HTTPS (also used by scripts/build-playgrounds.mjs).
+COPY overlay/  /
+RUN chmod 755 /sbin/vm-init /sbin/vm-agent /root/project/hello.sh

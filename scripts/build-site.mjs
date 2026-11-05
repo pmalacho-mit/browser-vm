@@ -22,6 +22,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { copyStatic, esbuildTargets } from "./esbuild.config.mjs";
 import { target } from "./targets.mjs";
+import { createHash } from "node:crypto";
 
 const root = path.resolve(import.meta.dirname, "..");
 const fromRoot = (...p) => path.join(root, ...p);
@@ -83,7 +84,6 @@ fs.writeFileSync(path.join(dist, ".nojekyll"), ""); // GitHub Pages: serve node_
     // workerMain.js resolves modules against its own URL unless told otherwise; a blob has none.
     "const worker = new Worker(URL.createObjectURL(new Blob([`globalThis.MonacoEnvironment = { baseUrl: ${JSON.stringify(new URL('../../../', workerAbs).href)} }; importScripts(${JSON.stringify(workerAbs.href)});`], { type: 'text/javascript' })), { name }); // CSP-inheriting (build-site.mjs)");
   if (wrapped === script) throw new Error("could not wrap the extension host worker (vscode-web changed?)");
-  const { createHash } = await import("node:crypto");
   const hash = (t) => `'sha256-${createHash("sha256").update(t).digest("base64")}'`;
   if (!html.includes(hash(script))) throw new Error("extension host iframe: inline script hash mismatch (vscode-web changed?)");
   const locked = html
@@ -113,9 +113,45 @@ fs.cpSync(fromRoot(guest, "rootfs"), path.join(vmDir, "rootfs"), { recursive: tr
 // guest/agent, written into the guest before boot (without it, the image's shell agent runs)
 if (vm.agent) fs.copyFileSync(vm.agent, path.join(vmDir, "vm-agent"));
 
+// 4. Playgrounds (npm run playgrounds → build/playgrounds): snapshots restore
+// only on the emulator and kernel they were built with, so ship the ones that
+// match this build, with the blobs their file index references.
+const playgrounds = [];
+{
+  const src = fromRoot("build/playgrounds");
+  const id16 = (/** @type {string} */ f) => createHash("sha256").update(fs.readFileSync(f)).digest("hex").slice(0, 16);
+  const emulator = id16(vm.wasm), kernelId = id16(vm.kernel);
+  const dirs = fs.existsSync(src) ? fs.readdirSync(src).filter((d) => fs.existsSync(path.join(src, d, "manifest.json"))) : [];
+  for (const id of dirs) {
+    const m = JSON.parse(fs.readFileSync(path.join(src, id, "manifest.json"), "utf8"));
+    const why = m.arch !== vm.arch ? `built for ${m.arch}` : m.emulator !== emulator ? "built with another emulator" : m.kernel !== kernelId ? "built with another kernel" : null;
+    if (why) { console.warn(`playground ${id}: skipped (${why}; rebuild with npm run playgrounds)`); continue; }
+    const out = path.join(vmDir, "playgrounds", id);
+    fs.mkdirSync(out, { recursive: true });
+    for (const f of ["manifest.json", m.state]) fs.copyFileSync(path.join(src, id, f), path.join(out, f));
+    // Every file in the playground's index (fs.json) is a blob in the shared pool.
+    /** @type {(entries: any[]) => void} */
+    const walk = (entries) => {
+      for (const e of entries) {
+        const [, , , mode, , , target] = e;
+        if ((mode & 0xf000) === 0x4000) walk(target);
+        else if ((mode & 0xf000) === 0x8000 && typeof target === "string") {
+          const to = path.join(vmDir, "rootfs", target);
+          if (!fs.existsSync(to)) fs.copyFileSync(path.join(src, "rootfs", target), to);
+        }
+      }
+    };
+    walk(JSON.parse(fs.readFileSync(path.join(src, id, "fs.json"), "utf8")).fsroot);
+    playgrounds.push({ id, title: m.title, description: m.description, memoryMB: m.memoryMB, packages: m.packages });
+  }
+  fs.mkdirSync(path.join(vmDir, "playgrounds"), { recursive: true });
+  fs.writeFileSync(path.join(vmDir, "playgrounds", "index.json"), JSON.stringify(playgrounds, null, 2) + "\n");
+}
+
 const size = (/** @type {string} */ dir) => fs.readdirSync(dir, { recursive: true, encoding: "utf8" }).reduce((n, f) => {
   const s = fs.statSync(path.join(dir, f)); return n + (s.isFile() ? s.size : 0);
 }, 0);
 console.log(`VM:     ${vm.arch}, ${vm.description}\nemu:   ${path.relative(root, path.dirname(vm.wasm))}\nkernel: ${kernel}\nguest:  ${guest}\nagent:  ${vm.agent ? path.relative(root, vm.agent) : "(the image's shell agent)"}\ntls:    ${tlsWasm}`);
+console.log(`playgrounds: ${playgrounds.map((p) => p.id).join(", ") || "none (npm run playgrounds)"}`);
 console.log(`dist/ built: ${(size(dist) / 1e6).toFixed(1)} MB  (VM assets ${(size(vmDir) / 1e6).toFixed(1)} MB)`);
 console.log(`serve it with:  npm start   (or any static file server)`);
