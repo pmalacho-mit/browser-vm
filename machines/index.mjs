@@ -37,10 +37,7 @@ export const MACHINES = {
     description: "64-bit x86 (v86_64 fork, experimental)",
     emulatorDir: path.join(here, "x86_64/emulator"),
     kernel: [path.join(repo, "build/kernel-x86_64/bzImage"), path.join(here, "x86_64/prebuilt/bzImage")],
-    // Go programs abort on the fork ("sysMemStat overflow": an emulation bug in
-    // 64-bit XADD/CMPXCHG; x86_64/emulator/PROVENANCE.md), so this machine gets no
-    // Go agent: the image's shell agent runs instead (no exec, ports or refresh).
-    runsGo: false,
+    runsGo: true,
   },
 };
 

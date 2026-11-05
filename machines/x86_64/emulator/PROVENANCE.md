@@ -5,19 +5,19 @@ that adds x86-64 long mode and a 64-bit JIT.
 
 source:  https://github.com/pmalacho-mit/v86_64, this project's fork of
          https://github.com/portlandhodl/v86_64 (itself forked from copy/v86 on 2026-10-02)
-commit:  4e9b7b4cc912507919d9f37991eefab51e12d9f9 (2026-11-05, "Merge pull request #2
-         from pmalacho-mit/issue/1"): portlandhodl's c3945744 plus the 64-bit
-         snapshot fix (03001ff1, "Save and restore the 64-bit CPU state")
+commit:  d26cf8d2ca64844dd7225b6aa5bd222f9c3041bb (2026-11-05): portlandhodl's c3945744 plus
+         the 64-bit snapshot fix (03001ff1) and the XADD/CMPXCHG restart fix
+         (the fork's issue #5)
 build:   the fork's own CI ("CI" workflow, push of that commit), published by
-         github-actions[bot] as release `latest` on 2026-11-05T04:46:44Z
+         github-actions[bot] as release `latest` on 2026-11-05T17:52:27Z
 license: BSD-2-Clause (`LICENSE`); `src/floppy.js` contains MIT-licensed code (`LICENSE.MIT`).
          Both files are taken from the commit above.
 
 | file | SHA-256 | what |
 |---|---|---|
 | `libv86.mjs` | `91caf03ec451a667eecb2e9e494b16f674c803f76e92549f702f3f8419330561` | JavaScript side (Closure Compiler build) |
-| `v86.wasm` | `f73d6b1f6a111263c5401c19f064809440aaf141aa6110bf2675ff8f428143b7` | CPU + JIT core |
-| `v86-fallback.wasm` | `5adb41cdebe97570a4374268594f2619ef9ccf5c5a41ad44f8404818e9e8690c` | the same without SIMD/bulk memory, for engines lacking them |
+| `v86.wasm` | `a7429806ad7c1a17e7a31d2cff50f566d96daf3941f2fc9368153c15ae10ca84` | CPU + JIT core |
+| `v86-fallback.wasm` | `6f679d87dd61075904c30e8bae0732962564727b367a4f1d2a61b54de3a0ecdf` | the same without SIMD/bulk memory, for engines lacking them |
 
 The checksums match the digests GitHub records for the release assets, checked
 on 2026-11-05 by `npm run v86_64` (now `npm run emulator:x86_64`; `V86_64_REPO=pmalacho-mit/v86_64` then, now
@@ -39,6 +39,10 @@ Bump the commit deliberately, update this file, and rerun both
 `npm run test:boot` and `npm run test:boot:x86_64`.
 
 ## History
+
+- 2026-11-05: `4e9b7b4c` → `d26cf8d2`, for the XADD/CMPXCHG fix. `libv86.mjs` is
+  byte-identical; the `.wasm` files changed (`f73d6b1f…`, `5adb41cd…` before). Go programs
+  now run, so the machine ships the Go agent (`runsGo`).
 
 - 2026-11-05: moved from portlandhodl/v86_64 at `c3945744` to this project's
   fork at `4e9b7b4c`, for the snapshot fix. The previous files' SHA-256s were
@@ -66,9 +70,11 @@ triple-faulted on its next interrupt (`page fault during #DF delivery`): the
 64-bit CPU state wasn't in the saved state. `npm run test:boot:x86_64` now
 restores a snapshot and checks the shell answers and files survive.
 
-**Still open: Go programs abort** ("sysMemStat overflow"), so the 64-bit VM
-can't run the Go guest agent and keeps the image's shell agent (no `exec`,
-`ports` or `refresh`). Playgrounds need the Go agent, so they stay 32-bit.
+**Go programs: fixed at `d26cf8d2`.** They used to abort ("sysMemStat overflow"):
+64-bit `XADD` and `CMPXCHG` on memory weren't restartable after a write fault.
+The 64-bit VM now runs the Go guest agent (`prebuilt/vm-agent-x86_64` in
+`runtime/guest/`); `npm run test:boot:x86_64` passes every check the 32-bit
+one does, including `exec`, `ports` and the agent `refresh` after a restore.
 
 It also relies on the same v86 internals as the 32-bit build
 (`types/v86-internals.d.ts`: `fs9p`, `bus`, the fake network's TCP

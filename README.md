@@ -164,8 +164,7 @@ deployment checklist.
 - **Speed.** Emulated x86 runs at a fraction of native speed: fine for shells,
   git and scripts, slow for heavy compiles (see the Rust measurements in
   [images/](images/README.md#playgrounds)). The editor itself runs natively.
-- **32-bit by default.** The 64-bit machine can't run Go programs yet, so it has
-  no Go agent and no playgrounds ([machines/](machines/README.md#x86_64-experimental)).
+- **32-bit by default.** The 64-bit machine is experimental and has no playgrounds yet ([machines/](machines/README.md#x86_64-experimental)).
 - **Three terminals max** (one per serial port). More would need the agent to
   multiplex PTYs over one channel.
 - **VS Code 1.91, web extensions only** ([surfaces/](surfaces/README.md#vs-code-vscode)).
