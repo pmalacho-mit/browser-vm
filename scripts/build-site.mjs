@@ -110,10 +110,12 @@ fs.copyFileSync(fromRoot(tlsWasm), path.join(vmDir, "tls.wasm"));
 const guest = path.relative(root, vm.guest);
 fs.copyFileSync(fromRoot(guest, "fs.json"), path.join(vmDir, "fs.json"));
 fs.cpSync(fromRoot(guest, "rootfs"), path.join(vmDir, "rootfs"), { recursive: true });
+// guest/agent, written into the guest before boot (without it, the image's shell agent runs)
+if (vm.agent) fs.copyFileSync(vm.agent, path.join(vmDir, "vm-agent"));
 
 const size = (/** @type {string} */ dir) => fs.readdirSync(dir, { recursive: true, encoding: "utf8" }).reduce((n, f) => {
   const s = fs.statSync(path.join(dir, f)); return n + (s.isFile() ? s.size : 0);
 }, 0);
-console.log(`VM:     ${vm.arch}, ${vm.description}\nemu:   ${path.relative(root, path.dirname(vm.wasm))}\nkernel: ${kernel}\nguest:  ${guest}\ntls:    ${tlsWasm}`);
+console.log(`VM:     ${vm.arch}, ${vm.description}\nemu:   ${path.relative(root, path.dirname(vm.wasm))}\nkernel: ${kernel}\nguest:  ${guest}\nagent:  ${vm.agent ? path.relative(root, vm.agent) : "(the image's shell agent)"}\ntls:    ${tlsWasm}`);
 console.log(`dist/ built: ${(size(dist) / 1e6).toFixed(1)} MB  (VM assets ${(size(vmDir) / 1e6).toFixed(1)} MB)`);
 console.log(`serve it with:  npm start   (or any static file server)`);

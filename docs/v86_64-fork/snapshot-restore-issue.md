@@ -119,3 +119,38 @@ Before the fix, `profile:boot:x86_64` crashes after "zstd -19 … MB" with the p
 - The existing test suites still pass, and 32-bit state images (including older
   ones) still restore.
 - `npm run profile:boot:x86_64` in browser-linux-ide prints "shell answered".
+
+---
+
+# Second bug: Go programs abort with "sysMemStat overflow"
+
+Found while doing the above: any Go binary (static, `GOARCH=amd64`, Go 1.24.13)
+dies at startup on the fork. The same binary runs on real x86_64 hardware, and the
+32-bit build (`GOARCH=386`) runs on upstream v86.
+
+```
+runtime: val=18446744073709551360 n=-256
+fatal error: sysMemStat overflow
+runtime.(*sysMemStat).add(0x40000?, 0xffffffffffffff00)
+	runtime/mstats.go:661
+```
+
+`sysMemStat.add` is a 64-bit atomic add on a memory-accounting counter
+(`LOCK XADDQ`); the value went from about zero to `-256`, which means an
+earlier add or subtract on the same counter returned or stored a wrong
+result. Likely an emulation bug in a 64-bit atomic or arithmetic instruction
+(`XADD`, `CMPXCHG`, or flags/carry on 64-bit `ADD`/`SUB`). The fork's
+instruction fuzzer compares the interpreter with the JIT, so a bug present
+in both would slip through it.
+
+**Reproduce** with browser-linux-ide's agent: `npm run agent` builds
+`build/agent/vm-agent-x86_64`; copy it into the 64-bit guest and run it, for
+example with `scripts/compare-64.mjs --arch=x86_64` and
+`BINARY=build/agent/vm-agent-x86_64 BINARY_CMDS="tool < /dev/null"`. Any small Go
+program (`func main() { println("hi") }`, built with `CGO_ENABLED=0 GOOS=linux
+GOARCH=amd64`) should show the same.
+
+**Acceptance:** the Go program runs to completion; browser-linux-ide then
+re-enables the agent for the 64-bit VM (`agent` in `scripts/targets.mjs`) and
+`npm run test:boot:x86_64` passes its exec, ports and snapshot checks.
+

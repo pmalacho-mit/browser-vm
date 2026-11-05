@@ -16,6 +16,8 @@ import path from "node:path";
  * @property {string} emulatorDir  holds libv86.mjs, v86.wasm, v86-fallback.wasm
  * @property {string[]} kernel     candidates, first existing wins
  * @property {string[]} guest      candidates (each holds fs.json + rootfs/), first existing wins
+ * @property {string[] | null} agent  candidates for the guest agent binary (guest/agent);
+ *                                 null: use the image's shell agent
  */
 
 /** @type {Record<string, ArchFiles>} */
@@ -25,12 +27,16 @@ export const ARCHES = {
     emulatorDir: "node_modules/v86/build",
     kernel: ["build/kernel/bzImage", "guest/prebuilt/bzImage"],
     guest: ["build/guest", "guest/prebuilt/guest"],
+    agent: ["build/agent/vm-agent-i686", "guest/prebuilt/agent/vm-agent-i686"],
   },
   x86_64: {
     description: "64-bit x86 (v86_64 fork, experimental)",
     emulatorDir: "vendor/v86_64",
     kernel: ["build/kernel-x86_64/bzImage", "guest/prebuilt/x86_64/bzImage"],
     guest: ["build/guest-x86_64", "guest/prebuilt/x86_64/guest"],
+    // The Go agent aborts on the v86_64 fork ("sysMemStat overflow", an emulation
+    // bug; docs/v86_64-fork), so the 64-bit VM keeps the image's shell agent.
+    agent: null,
   },
 };
 
@@ -43,6 +49,7 @@ export const ARCHES = {
  * @property {string} wasmFallback  the same without SIMD/bulk memory
  * @property {string} kernel        bzImage
  * @property {string} guest         folder with fs.json + rootfs/
+ * @property {string | null} agent  the guest agent binary (written into the guest before boot), if any
  */
 
 /** The --arch= argument of this process, if any. */
@@ -71,5 +78,6 @@ export function target(root, arch = argArch() || process.env.VM_ARCH || "i686") 
     wasmFallback: path.join(emu, "v86-fallback.wasm"),
     kernel: pick(t.kernel),
     guest: pick(t.guest),
+    agent: t.agent ? pick(t.agent) : null,
   };
 }

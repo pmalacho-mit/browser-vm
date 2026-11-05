@@ -34,7 +34,7 @@ export class ConsoleTerminals {
           writeEmitter.fire(`\x1b[2mBooting Linux in your browser (v86)… attaching to /dev/${tty}\x1b[0m\r\n`);
         }
         await vm.ready;
-        if (dims) await vm.rpc("resize", tty, dims.rows, dims.columns);
+        if (dims) await vm.rpc({ cmd: "resize", tty, rows: dims.rows, cols: dims.columns });
         vm.send(port, "\n"); // nudge the shell to print a fresh prompt
       },
       handleInput: (data) => vm.send(port, data),
@@ -42,13 +42,13 @@ export class ConsoleTerminals {
         dims = d;
         // A serial line has no window size; the agent sets it with stty
         // (TIOCSWINSZ), and the kernel sends SIGWINCH to the foreground job.
-        if (vm.state === "running") vm.rpc("resize", tty, d.rows, d.columns);
+        if (vm.state === "running") vm.rpc({ cmd: "resize", tty, rows: d.rows, cols: d.columns });
       },
       close: () => {
         sub?.dispose();
         this.inUse.delete(port);
         // Like closing an SSH session: SIGHUP everything on that tty; init respawns a shell.
-        vm.rpc("hangup", tty);
+        vm.rpc({ cmd: "hangup", tty });
       },
     };
     return { name: `Linux VM (${tty})`, pty, iconPath: new vscode.ThemeIcon("terminal-linux") };

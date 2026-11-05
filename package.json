@@ -17,6 +17,7 @@
     "test:boot": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/boot-test.mjs",
     "test:boot:x86_64": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/boot-test.mjs --arch=x86_64",
     "tls": "tls/build.sh",
+    "agent": "guest/agent/build.sh",
     "test:gate": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/gate-test.mjs",
     "profile:boot": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/boot-profile.mjs 128",
     "profile:boot:x86_64": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/boot-profile.mjs 128 --arch=x86_64",

@@ -55,10 +55,10 @@ syncing and no second copy.
 | **Host page** | `web/index.html`, `web/boot.ts` | Opens `vmfs:/root/project`, registers the extension through `additionalBuiltinExtensions`, sets Open VSX, allows proposed APIs, sets the webview endpoint. Works from any sub-path. |
 | **Bridge extension** | `extension/src` | A *web* extension (`"browser"` entry). The whole VM runs inside VS Code's extension-host Web Worker. |
 | **Emulator** | npm `v86` (BSD-2) | x86 → WASM JIT. Only 32-bit x86, so the guest is i686. |
-| **Kernel** | `guest/kernel.config`, `guest/build-kernel.sh` | `tinyconfig` plus virtio-pci, 9p, 8250 serial and devtmpfs, all built in, so there's no initramfs and no modules. 1.5 MB. Like Docker, the *runtime* supplies the kernel and the image supplies only userland. |
+| **Kernel** | `guest/kernel*.config`, `guest/build-kernel.sh` | `tinyconfig` plus virtio-pci, 9p, 8250 serial and devtmpfs, all built in, so there's no initramfs and no modules. 2 MB. Like Docker, the *runtime* supplies the kernel and the image supplies only userland. The 32-bit kernel needs `CONFIG_COMPAT_32BIT_TIME`: without it, `futex(2)` returned ENOSYS, Go programs crashed, npm failed, and V8 ran several times slower (`node -e 1`: 12.5 s → 2.9 s). |
 | **Userland** | `guest/Dockerfile`, `guest/build-rootfs.sh` | Any `linux/386` image. `docker export` → `tools/fs2json.py` + `copy-to-sha256.py` (from v86) → JSON index + content-addressed zstd blobs. |
 | **PID 1** | `guest/vm-init` | Mounts `/proc`, `/sys`, `/dev`, `/tmp`. Runs a respawning `setsid -c` login shell per console (that's what gives job control and Ctrl+C) and starts the agent. Independent of the distro's init system. |
-| **Control plane** | `guest/vm-agent` | Line-based RPC on ttyS1. `resize` (`stty rows/cols` → SIGWINCH, so vim/top re-layout) and `hangup` (closing a terminal tab SIGHUPs that session, like SSH). |
+| **Control plane** | `guest/agent/` (Go), `extension/src/agent-client.ts` | JSON-lines RPC on ttyS1: `resize` (TIOCSWINSZ → SIGWINCH, so vim/top re-layout), `hangup` (closing a terminal tab SIGHUPs that session, like SSH), `exec` (exit code, stdout, stderr), `ports` (listening sockets) and `refresh` (after a snapshot restore: reseed the RNG, set the clock, swap in this tab's CA). The extension writes the binary into the guest before boot, so it works with any image; images still ship the shell agent `guest/vm-agent` (resize and hangup only) as a fallback. `npm run agent` rebuilds it (reproducibly). |
 
 Gotchas worth knowing (each is commented where it's handled):
 
@@ -404,7 +404,9 @@ The payoff is software that ships only 64-bit builds. Biome 2.6.5's x86_64
 binary from npm (`@biomejs/cli-linux-x64-musl`) runs in the 64-bit VM
 (`biome --version` in 1.4 s); the 32-bit kernel can't execute it.
 
-**Known gap: snapshots don't restore.** `save_state()` works, but a restored
+**Known gaps.** The Go guest agent aborts on the fork ("sysMemStat overflow",
+an emulation bug), so the 64-bit VM uses the image's shell agent: terminals work,
+but `exec`, `ports` and `refresh` don't. And **snapshots don't restore.** `save_state()` works, but a restored
 64-bit VM triple-faults on its next interrupt ("page fault during #DF
 delivery"), with the CI build and with a locally built one alike; the 32-bit VM
 restores fine. Anything built on snapshots (resuming a session, quickboot
