@@ -6,12 +6,17 @@
 #
 # Network gate: the gate must be served on a SECOND origin (see README, "Deploying").
 # A single Pages site is one origin, so by default the VM boots with no network.
-# To enable it, serve this same dist/ on a second origin (another Pages site or a
-# custom domain) and set both repository variables (Settings → Secrets and variables
-# → Actions → Variables):
+# Note: every project site under one account (<user>.github.io/<repo>) is the SAME
+# origin, so a second repo's Pages site on github.io does not work as the gate.
+# To enable it, serve this same dist/ on a different HOST (a custom domain such as
+# gate.example.com, another static host, or a different account's github.io) and
+# set both repository variables (Settings → Secrets and variables → Actions → Variables):
 #   IDE_URL   e.g. https://pmalacho-mit.github.io/browser-vm/
-#   GATE_URL  e.g. https://gate.example.com/
+#   GATE_URL  e.g. https://gate.example.com/   (the dist/ root, with a trailing slash)
 # Set both or neither; scripts/build-site.mjs refuses one without the other.
+#
+# 64-bit VM: set the repository variable VM_ARCH to x86_64 to deploy the
+# experimental 64-bit VM instead of the default 32-bit one (see README).
 name: Deploy to GitHub Pages
 
 on:
@@ -42,16 +47,20 @@ jobs:
 
       - run: npm ci --no-audit --no-fund
 
-      # Fast checks before publishing: gate/vault unit tests (~2 s) and a headless
-      # boot of the real guest image in Node (~15 s, no network needed).
+      # Fast checks before publishing: types (~5 s), gate/vault unit tests (~2 s)
+      # and a headless boot of each guest image in Node (~15-20 s each, no network
+      # needed). Both VMs are checked, whichever one is deployed.
+      - run: npm run typecheck
       - run: npm run test:gate
       - run: npm run test:boot
+      - run: npm run test:boot:x86_64
 
       - name: Build dist/
         run: npm run build
         env:
           IDE_URL: ${{ vars.IDE_URL }}
           GATE_URL: ${{ vars.GATE_URL }}
+          VM_ARCH: ${{ vars.VM_ARCH }}
 
       - uses: actions/configure-pages@v5
 

@@ -2,23 +2,33 @@
 // Boots the same kernel + rootfs with v86 under Node and exercises the bridges
 // the extension relies on: serial consoles, the shared 9p filesystem and the
 // fetch() network (with a stub fetch, so it needs no internet).
-//   node scripts/boot-test.mjs
-import { V86 } from "v86";
+//   npm run test:boot   (npm run test:boot:x86_64 for the 64-bit VM)
 import fs from "node:fs";
 import path from "node:path";
-import { attachFetchNetwork, loadTLS, writeGuestFile } from "../extension/src/net.js";
+import { pathToFileURL } from "node:url";
+import { attachFetchNetwork, loadTLS, writeGuestFile } from "../extension/src/net.ts";
+import { target } from "./targets.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
-const pick = (...c) => c.map((p) => path.join(root, p)).find((p) => fs.existsSync(p));
-const guest = pick("build/guest", "guest/prebuilt/guest");
+const vmTarget = target(root); // --arch= or $VM_ARCH: i686 (default) or x86_64
+/** @type {{ V86: typeof import("v86").V86 }} */
+const { V86 } = await import(pathToFileURL(vmTarget.lib).href);
+console.log(`VM: ${vmTarget.arch}, ${vmTarget.description}`);
+/** The first of these paths (relative to the repo) that exists, as an absolute path. */
+const pick = (/** @type {string[]} */ ...c) => {
+  const found = c.map((p) => path.join(root, p)).find((p) => fs.existsSync(p));
+  if (!found) throw new Error(`none of these exist: ${c.join(", ")}`);
+  return found;
+};
+const guest = vmTarget.guest;
 const t0 = Date.now();
 const elapsed = () => `${((Date.now() - t0) / 1000).toFixed(1)}s`;
 
 const vm = new V86({
-  wasm_path: path.join(root, "node_modules/v86/build/v86.wasm"),
+  wasm_path: vmTarget.wasm,
   bios: { url: path.join(root, "vendor/seabios.bin") },
   vga_bios: { url: path.join(root, "vendor/vgabios.bin") },
-  bzimage: { url: pick("build/kernel/bzImage", "guest/prebuilt/bzImage") },
+  bzimage: { url: vmTarget.kernel },
   filesystem: { basefs: path.join(guest, "fs.json"), baseurl: path.join(guest, "rootfs") + "/" },
   cmdline: "console=ttyS0 root=host9p rootfstype=9p rw rootflags=trans=virtio,cache=none init=/sbin/vm-init tsc=reliable quiet",
   memory_size: 256 << 20, uart1: true, uart2: true, uart3: true,
@@ -46,12 +56,12 @@ vm.add_listener("emulator-loaded", async () => {
 let out = "", agent = "";
 vm.add_listener("serial0-output-byte", (b) => (out += String.fromCharCode(b)));
 vm.add_listener("serial1-output-byte", (b) => (agent += String.fromCharCode(b)));
-const until = (cond, what, ms = 120000) => new Promise((res, rej) => {
+const until = (cond, what, ms = 120000) => /** @type {Promise<void>} */ (new Promise((res, rej) => {
   const s = Date.now(), iv = setInterval(() => {
     if (cond()) { clearInterval(iv); res(); }
     else if (Date.now() - s > ms) { clearInterval(iv); rej(new Error(`timeout: ${what}`)); }
   }, 50);
-});
+}));
 const PROMPT = /\$ (\x1b\[6n)?$/;
 const sh = async (cmd) => { out = ""; vm.serial0_send(cmd + "\n"); await until(() => PROMPT.test(out), cmd); return out.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, "").split("\r\n").slice(1, -1).join("\n"); };
 const check = (name, ok, detail = "") => { console.log(`${ok ? "PASS" : "FAIL"}  ${name}${detail ? "  — " + detail : ""}`); if (!ok) process.exitCode = 1; };
@@ -60,7 +70,7 @@ await until(() => agent.includes("0 ready"), "agent ready");
 check("boot + agent ready on ttyS1", true, elapsed());
 await until(() => PROMPT.test(out), "shell prompt");
 check("shell prompt on ttyS0", true, elapsed());
-check("kernel", /i686/.test(await sh("uname -m")));
+check(`kernel is ${vmTarget.arch}`, (await sh("uname -m")) === vmTarget.arch);
 check("userland", /Alpine/.test(await sh("cat /etc/os-release")));
 
 // editor -> guest: write into the existing inode, exactly like the FileSystemProvider
@@ -91,7 +101,7 @@ check("CORS-refused request → HTTP 502 in guest", /502/.test(r) && /rc=1/.test
 check("cookies never sent", fetched.every((f) => f.credentials === "omit"));
 r = await sh("(printf 'HTTP/1.0 200 OK\\r\\n\\r\\nserved inside the VM\\n' | nc -l -p 8000 >/dev/null &); sleep 1; wget -qO- http://localhost:8000/");
 // (long commands wrap on the 80-column console, so only look at the last line)
-r = r.split("\n").pop();
+r = r.split("\n").pop() ?? "";
 check("server inside the VM reachable at localhost", r === "served inside the VM", r);
 // Negative control: without this tab's CA in the bundle, the guest must reject the certificate.
 r = await sh("awk '/BEGIN CERT/{b=\"\"} {b=b $0 \"\\n\"} /END CERT/{if(c++)printf \"%s\", p; p=b}' /etc/ssl/certs/ca-certificates.crt > /tmp/no-vm-ca.crt; " +

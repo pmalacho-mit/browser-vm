@@ -2,7 +2,9 @@
 # ends up as the root filesystem of the Linux VM running in the browser.
 #
 # Requirements:
-#   * must be a 32-bit x86 image (linux/386): v86 emulates an i686 CPU
+#   * must match the emulator's CPU: linux/386 for v86 (VM_ARCH=i686, the default),
+#     linux/amd64 for the v86_64 fork (VM_ARCH=x86_64). build-rootfs.sh passes
+#     PLATFORM (and BASE=alpine:3.22 for x86_64) accordingly.
 #   * must contain /bin/sh (busybox is fine)
 #   * must COPY in vm-init + vm-agent (PID 1 and the control-channel agent)
 #
@@ -11,7 +13,8 @@
 # supplies the userland.
 
 ARG BASE=i386/alpine:3.22
-FROM --platform=linux/386 ${BASE}
+ARG PLATFORM=linux/386
+FROM --platform=${PLATFORM} ${BASE}
 
 # Extra packages for the dev environment. Rebuild with e.g.
 #   PACKAGES="git nodejs npm python3 vim build-base" npm run guest

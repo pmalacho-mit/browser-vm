@@ -1,0 +1,26 @@
+{
+  // Shared settings. TypeScript only type-checks (noEmit); esbuild does all
+  // compiling (scripts/esbuild.config.mjs), and Node runs the .ts files the
+  // tests import directly (--experimental-strip-types). Hence:
+  //   erasableSyntaxOnly  - no enums/namespaces/parameter properties, so Node
+  //                         can strip types without transforming code
+  //   verbatimModuleSyntax - type-only imports must say `import type`
+  //   allowImportingTsExtensions - imports name the real file (./core.ts),
+  //                         which both esbuild and Node resolve
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "strict": true,
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "allowJs": true,
+    "checkJs": true,
+    "skipLibCheck": true,
+    "noFallthroughCasesInSwitch": true,
+    "types": []
+  }
+}

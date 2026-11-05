@@ -5,7 +5,7 @@ This folder is `/root/project` **inside a Linux VM running in your browser tab**
 
 Things to try in the terminal (Ctrl+`):
 
-    uname -a            # a real Linux kernel, i686
+    uname -a            # a real Linux kernel (i686, or x86_64 in the 64-bit build)
     cat /etc/os-release # Alpine userland from guest/Dockerfile
     ./hello.sh
     echo hi > from-terminal.txt   # ...watch it appear in the Explorer

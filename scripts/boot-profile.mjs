@@ -1,21 +1,26 @@
 // Where does boot time go? And how fast is resuming from a snapshot instead?
-//   node scripts/boot-profile.mjs [memoryMB] [kernel]
+//   node scripts/boot-profile.mjs [memoryMB] [kernel] [--arch=x86_64]
 // Prints a phase timeline for a cold boot, then saves a snapshot of the
 // booted VM, measures its size (raw and compressed) and how long a restore
 // takes until a shell answers.
-import { V86 } from "v86";
 import fs from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import zlib from "node:zlib";
+import { target } from "./targets.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
-const pick = (...c) => c.map((p) => path.join(root, p)).find((p) => fs.existsSync(p));
-const guest = pick("build/guest", "guest/prebuilt/guest");
-const memMB = parseInt(process.argv[2] || "512", 10);
-const kernel = process.argv[3] || pick("build/kernel/bzImage", "guest/prebuilt/bzImage");
+const vmTarget = target(root); // --arch= or $VM_ARCH: i686 (default) or x86_64
+/** @type {{ V86: typeof import("v86").V86 }} */
+const { V86 } = await import(pathToFileURL(vmTarget.lib).href);
+console.log(`VM: ${vmTarget.arch}, ${vmTarget.description}`);
+const guest = vmTarget.guest;
+const positional = process.argv.slice(2).filter((a) => !a.startsWith("--")); // [memoryMB] [kernel]
+const memMB = parseInt(positional[0] || "512", 10);
+const kernel = positional[1] || vmTarget.kernel;
 
 const base = (extra) => ({
-  wasm_path: path.join(root, "node_modules/v86/build/v86.wasm"),
+  wasm_path: vmTarget.wasm,
   bios: { url: path.join(root, "vendor/seabios.bin") },
   vga_bios: { url: path.join(root, "vendor/vgabios.bin") },
   filesystem: { basefs: path.join(guest, "fs.json"), baseurl: path.join(guest, "rootfs") + "/" },
@@ -24,9 +29,9 @@ const base = (extra) => ({
   ...extra,
 });
 
-const until = (cond, ms = 120000) => new Promise((res, rej) => {
+const until = (cond, ms = 120000) => /** @type {Promise<void>} */ (new Promise((res, rej) => {
   const s = Date.now(), iv = setInterval(() => { if (cond()) { clearInterval(iv); res(); } else if (Date.now() - s > ms) { clearInterval(iv); rej(new Error("timeout")); } }, 5);
-});
+}));
 
 // ---- cold boot, verbose kernel, every serial line timestamped
 let t0 = performance.now();
@@ -39,6 +44,7 @@ const vm = new V86(base({
   autostart: true,
 }));
 let line = "", agent = "", out = "";
+/** @type {[RegExp, string][]} */
 const wanted = [
   [/Decompressing Linux|Booting the kernel/, "decompressor"],
   [/Linux version/, "kernel started"],

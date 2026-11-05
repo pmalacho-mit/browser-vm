@@ -9,6 +9,7 @@ npm run build      # assembles the static site in dist/
 npm run test:boot  # optional: headless boot + filesystem + network checks in Node
 npm start          # http://localhost:8080   (use "localhost", not 127.0.0.1 — see Webviews)
                    # behind a port forwarder? see "Behind a port forwarder" under Deploying
+npm run dev        # build, serve, and rebuild on every change (see Development)
 ```
 
 What you get after ~10 s: an editor whose Explorer *is* the VM's `/root/project`,
@@ -51,7 +52,7 @@ syncing and no second copy.
 | Piece | Where | Notes |
 |---|---|---|
 | **Workbench** | `node_modules/vscode-web` → `dist/vscode` | Prebuilt Code-OSS 1.91 web build (MIT). The host page passes `IWorkbenchConstructionOptions` via `window.product`. |
-| **Host page** | `web/index.html` | Opens `vmfs:/root/project`, registers the extension through `additionalBuiltinExtensions`, sets Open VSX, allows proposed APIs, sets the webview endpoint. Works from any sub-path. |
+| **Host page** | `web/index.html`, `web/boot.ts` | Opens `vmfs:/root/project`, registers the extension through `additionalBuiltinExtensions`, sets Open VSX, allows proposed APIs, sets the webview endpoint. Works from any sub-path. |
 | **Bridge extension** | `extension/src` | A *web* extension (`"browser"` entry). The whole VM runs inside VS Code's extension-host Web Worker. |
 | **Emulator** | npm `v86` (BSD-2) | x86 → WASM JIT. Only 32-bit x86, so the guest is i686. |
 | **Kernel** | `guest/kernel.config`, `guest/build-kernel.sh` | `tinyconfig` plus virtio-pci, 9p, 8250 serial and devtmpfs, all built in, so there's no initramfs and no modules. 1.5 MB. Like Docker, the *runtime* supplies the kernel and the image supplies only userland. |
@@ -91,7 +92,7 @@ Gotchas worth knowing (each is commented where it's handled):
 ## Networking (still no server)
 
 The guest has a virtio NIC on v86's fake network stack (ARP, DNS and TCP,
-implemented in JavaScript). `extension/src/net.js` takes over TCP connections
+implemented in JavaScript). `extension/src/net.ts` takes over TCP connections
 to ports 80 and 443 and replays each HTTP request with the browser's `fetch()`:
 
 ```
@@ -144,7 +145,7 @@ allowlists, leak-suspect auditing, response scrubbing), with the browser
 supplying the isolation:
 
 ```
-VM ─► net.js (extension host) ─BroadcastChannel─► index.html (gate-relay.js) ─MessagePort─►
+VM ─► net.ts (extension host) ─BroadcastChannel─► index.html (gate-relay.ts) ─MessagePort─►
       gate iframe, origin gate.<host>:  local-network refusal → network policy →
       secret substitution → fetch(credentials: "omit") → scrub response → back
 ```
@@ -165,10 +166,10 @@ VM ─► net.js (extension host) ─BroadcastChannel─► index.html (gate-rel
 - **The destination is proven.** A secret is matched against the hostname of
   the URL the gate itself passes to `fetch()`, and the browser verifies TLS for
   exactly that name. There's no separate IP for a caller to choose, so the
-  Host-header bypass your addon defends against doesn't exist here. `net.js`
+  Host-header bypass your addon defends against doesn't exist here. `net.ts`
   also refuses requests whose Host doesn't match the TLS SNI (421).
 
-**Secret rules** (`web/gate/core.js`, unit tests in `npm run test:gate`):
+**Secret rules** (`web/gate/core.ts`, unit tests in `npm run test:gate`):
 
 - **Keyed by placeholder.** For example `GATE-OPENAI-KEY`, exported in the VM as
   `$OPENAI_API_KEY` through `/etc/profile.d/gate-secrets.sh`, which contains
@@ -189,7 +190,7 @@ VM ─► net.js (extension host) ─BroadcastChannel─► index.html (gate-rel
   wildcard host, and two placeholders where one contains the other.
 - **Secrets can be switched off** in the popup.
 
-**Encryption at rest** (`web/gate/vault.js`, `web/gate/webauthn.js`):
+**Encryption at rest** (`web/gate/vault.ts`, `web/gate/webauthn.ts`):
 
 - **One data key, several ways to unlock it.** A random 256-bit key encrypts
   each value (AES-256-GCM, fresh IV). That key is stored wrapped, once per
@@ -226,7 +227,7 @@ VM ─► net.js (extension host) ─BroadcastChannel─► index.html (gate-rel
 - **Modes:** *Ask first* (the default: only sites on the list; anything else is
   stopped and the user is asked), *Learn* (allowed, and each new site is listed
   for one-click rules) and *Open* (any public site, logged).
-- **Deployment defaults** (`web/gate/config.js`): the shipped list is package
+- **Deployment defaults** (`web/gate/config.ts`): the shipped list is package
   registries (npm, PyPI, crates, Go) and GitHub's raw/API hosts. Add the hosts
   your own tool needs. Users' own rules take precedence.
 - **Always refused:** localhost, IP addresses and local-network names. That
@@ -234,7 +235,7 @@ VM ─► net.js (extension host) ─BroadcastChannel─► index.html (gate-rel
 - **Per-secret usage limits** ("at most N requests per H hours"): caps what a
   runaway or malicious program can spend with a key. Reset by reloading.
 
-**Notices** (`extension.js`): the gate tells VS Code, in plain words, when code
+**Notices** (`extension.ts`): the gate tells VS Code, in plain words, when code
 is stopped at an unlisted site (with *Allow or review…*), when a secret is used
 with a site for the first time in a session, when a secret hits its limit, and
 when code tried to send a secret somewhere it isn't meant for (an error-level
@@ -262,7 +263,7 @@ one an agent modified. Assume that code is hostile. What it can and can't do:
 | act as the user on a website | impossible: no cookies, logins or client certificates are ever sent |
 | get the real key back from an allowed site | possible only if that site reflects a header it was sent, transformed; exact echoes are scrubbed. Keys stay confined to headers by default for this reason |
 | fake the unlock prompt to phish the passphrase | a page can draw a fake dialog; a passkey prompt comes from the OS and is bound to the gate's origin, so it can't be faked or redirected. Prefer passkeys |
-| install a malicious editor extension | the gallery is off by default (`ENABLE_EXTENSION_GALLERY` in `index.html`); ship the extensions you need as built-ins |
+| install a malicious editor extension | the gallery is off by default (`ENABLE_EXTENSION_GALLERY` in `web/boot.ts`); ship the extensions you need as built-ins |
 | change the IDE's settings from the project (`.vscode/settings.json`) | `linuxVm.*` settings are machine-scoped: a workspace can't override them |
 
 **What still doesn't hold:**
@@ -290,7 +291,7 @@ one an agent modified. Assume that code is hostile. What it can and can't do:
 **Deployment checklist:** serve the IDE and the gate on two https hosts
 (`ide.example.com`, `gate.example.com`) and build with `IDE_URL` and
 `GATE_URL` set to them (see Deploying); list your tool's hosts in
-`defaultPolicy` (`web/gate/config.js`); keep `ENABLE_EXTENSION_GALLERY` off;
+`defaultPolicy` (`web/gate/config.ts`); keep `ENABLE_EXTENSION_GALLERY` off;
 set `WEBVIEW_HOST` for self-hosted webviews.
 
 ## Optional: the network bridge extension (`bridge-extension/`)
@@ -354,9 +355,62 @@ tool built on the same image. Restoring has to re-seed the guest's RNG (every
 copy of a snapshot starts with the same entropy pool), set the clock, and
 re-trust the tab's new CA certificate.
 
+## 64-bit (experimental)
 
+One switch selects the VM's CPU architecture for every script:
 
-Edit `guest/Dockerfile` (it must stay `linux/386` and keep the two `COPY` lines), then:
+| | `VM_ARCH=i686` (default) | `VM_ARCH=x86_64` |
+|---|---|---|
+| Emulator | upstream v86 (npm) | [v86_64](https://github.com/portlandhodl/v86_64) fork, `vendor/v86_64/` (pinned commit) |
+| Kernel config | `guest/kernel.config` + `kernel-i686.config` | `guest/kernel.config` + `kernel-x86_64.config` |
+| Prebuilt kernel + image | `guest/prebuilt/` | `guest/prebuilt/x86_64/` |
+| Local builds | `build/kernel/`, `build/guest/` | `build/kernel-x86_64/`, `build/guest-x86_64/` |
+
+```
+npm run build:x86_64          # site with the 64-bit VM (or: VM_ARCH=x86_64 npm run build)
+npm run dev:x86_64            # the same, in watch mode
+npm run test:boot:x86_64      # headless checks against the 64-bit VM
+npm run compare:vm:x86_64     # boot + CPU benchmarks (npm run compare:vm for 32-bit)
+npm run kernel:x86_64         # rebuild the 64-bit kernel
+npm run guest:x86_64          # rebuild the 64-bit guest image (Docker, linux/amd64)
+npm run v86_64                # update vendor/v86_64 from the fork's CI release (verified)
+```
+
+`scripts/targets.mjs` maps the architecture to files. `dist/` holds one VM at a
+time: the last build wins. Everything else (the extension, gate, vault, network
+and init script) is architecture-independent and unchanged; the extension's
+`import { V86 } from "v86"` is pointed at the selected emulator at build time.
+
+Measured on a 2-core aarch64 dev container:
+
+| | 32-bit | 64-bit |
+|---|---|---|
+| `npm run test:boot` checks | 14/14 | 14/14 |
+| headless Chromium, page load → VM running | 4.1 s | 5.1 s |
+| Node, boot → agent ready | 2.1 s | 2.5 s |
+| shell loop / sha256 8 MB / gzip 8 MB / 64-bit math | 1.9 / 3.8 / 8.1 / 9.5 s | 2.1 / 2.0 / 7.1 / 7.7 s |
+
+The payoff is software that ships only 64-bit builds. Biome 2.6.5's x86_64
+binary from npm (`@biomejs/cli-linux-x64-musl`) runs in the 64-bit VM
+(`biome --version` in 1.4 s); the 32-bit kernel can't execute it.
+
+**Known gap: snapshots don't restore.** `save_state()` works, but a restored
+64-bit VM triple-faults on its next interrupt ("page fault during #DF
+delivery"), with the CI build and with a locally built one alike; the 32-bit VM
+restores fine. Anything built on snapshots (resuming a session, quickboot
+playgrounds) is 32-bit only until the fork fixes it.
+`npm run profile:boot:x86_64` reproduces it. Cold boots are unaffected.
+
+The fork is about a month old, maintained by one person, and accepts only
+AI-generated contributions. `vendor/v86_64/PROVENANCE.md` records the pinned
+commit and why its files can be trusted: they are the fork's own CI build of
+that commit, checked against GitHub's recorded checksums. Keep 32-bit as the
+default until the fork matures or upstream v86 adopts 64-bit.
+
+## Customizing the guest
+
+Edit `guest/Dockerfile` (keep the two `COPY` lines; its architecture must match
+the VM's, which `build-rootfs.sh` sets from `VM_ARCH`), then:
 
 ```
 npm run guest                                  # needs Docker; output in build/guest/
@@ -372,13 +426,50 @@ environment without access to Alpine's package mirror. On your machine,
 (all of which Alpine builds for x86). Because blobs are fetched lazily, a bigger
 image costs disk space on the host but adds nothing to boot time.
 
-Kernel: `npm run kernel` → `build/kernel/bzImage`. It builds natively on Linux
-(gcc, make, flex, bison, bc) and in a Debian container elsewhere.
+Kernel: `npm run kernel` → `build/kernel/bzImage` (`npm run kernel:x86_64` →
+`build/kernel-x86_64/bzImage`). It builds natively on Linux (gcc, make, flex,
+bison, bc, lz4) and in a Debian container elsewhere.
 
 `npm run test:boot` boots the guest headlessly in Node and checks consoles,
 the 9p bridge in both directions, resize, and networking (with a stub
 `fetch`). No browser needed. `npm run test:gate` unit-tests the gate's
 decisions and the vault (both unlock methods).
+
+## Development
+
+The browser code is TypeScript, compiled by esbuild (`scripts/esbuild.config.mjs`):
+
+| Source | Output | Runs in |
+|---|---|---|
+| `extension/src/*.ts` | `dist/extensions/linux-vm/dist/extension.js` (with the emulator for `VM_ARCH`) | VS Code's extension-host Web Worker |
+| `web/gate-relay.ts`, `web/boot.ts`, `web/amd-config.ts` | `dist/*.js` (classic scripts, loaded in order by `index.html`) | the IDE page |
+| `web/gate/*.ts` | `dist/gate/gate.js` + `chunks/` (ES module) | the gate's origin |
+| `types/gate-protocol.ts` | types only | messages shared by all three |
+
+```
+npm run dev        # full build, then rebuild on change and serve on :8080/:8081
+npm run typecheck  # tsc over extension/, web/ and scripts/ (also run in CI)
+```
+
+After a change, reload the page (or *Developer: Reload Window*): the extension
+host loads the extension only at startup. esbuild strips types without
+checking them, so a type error doesn't block a rebuild; `npm run typecheck`
+or your editor reports it. Changes to the kernel, guest image or `tls.wasm`
+still need their own `npm run kernel/guest/tls` and a restart.
+
+Conventions, all enforced by `tsconfig.base.json`:
+
+- **Imports name the real file** (`./core.ts`). esbuild and Node both resolve it.
+- **Only type syntax that can be erased** (`erasableSyntaxOnly`): no `enum`,
+  `namespace` or constructor parameter properties. That is what lets the tests
+  import `.ts` files directly (`node --experimental-strip-types`).
+- **`import type`** for type-only imports (`verbatimModuleSyntax`).
+- v86 APIs the project uses beyond v86's own types are declared in
+  `types/v86-internals.d.ts`. Re-check them when upgrading v86.
+
+The scripts in `scripts/` and the optional `bridge-extension/` stay JavaScript.
+Scripts are type-checked through JSDoc (`checkJs`); Chrome loads the bridge
+extension unbuilt.
 
 ## Deploying
 
@@ -410,7 +501,7 @@ origin, so a new gate origin starts with fresh ones.
 
 For **webviews**, point a wildcard name at the same files (for example
 `*.webview.example.com` with a wildcard TLS certificate) and set `WEBVIEW_HOST`
-in `index.html`. If it's left `null` on a non-localhost host, webviews load
+in `web/boot.ts`. If it's left `null` on a non-localhost host, webviews load
 from Microsoft's `*.vscode-cdn.net` copy, which works but is a third-party
 runtime dependency.
 
@@ -425,11 +516,10 @@ runtime dependency.
 - **No preview of servers in the VM from the browser yet.** The building block
   exists: `emulator.network_adapter.connect(port)` opens a TCP connection *into*
   the guest, which a service worker could use.
-- **Speed.** Emulated i686 runs at a fraction of native speed: fine for shells,
+- **Speed.** Emulated x86 runs at a fraction of native speed: fine for shells,
   git and scripts, slow for heavy compiles. The editor itself runs natively.
-- **32-bit only.** For x86_64 images, container2wasm (Bochs/QEMU → WASM) is the
-  alternative. It's slower and has no JS-side filesystem, so the FS bridge would
-  need an in-guest agent instead of direct inode access.
+- **32-bit by default.** `VM_ARCH=x86_64` switches to the experimental 64-bit
+  emulator (see "64-bit (experimental)").
 - **Workbench version.** `vscode-web` on npm is Code-OSS 1.91 (2024). For a
   current build, compile Code-OSS yourself (`npx gulp vscode-web-min`). Newer
   versions load as ES modules, so the script tags in `index.html` change, and
@@ -443,8 +533,10 @@ runtime dependency.
 ## Licenses
 
 Project code (including `bridge-extension/`): MIT. Third-party pieces keep their own licenses: Code-OSS/vscode-web
-(MIT), v86 and `tools/*.py` (BSD-2, see `tools/LICENSE.v86`), Go runtime in
+(MIT), v86 and `tools/*.py` (BSD-2, see `tools/LICENSE.v86`), the v86_64 fork
+in `vendor/v86_64/` (BSD-2 with MIT-licensed parts; see that folder), Go runtime in
 `tls/prebuilt/tls.wasm` and `vendor/go/wasm_exec.mjs` (BSD-3, `vendor/go/LICENSE`), SeaBIOS/VGABIOS in
-`vendor/` (LGPLv3), the Linux kernel in `guest/prebuilt/bzImage` (GPLv2: unmodified
-v6.18 source plus `guest/kernel.config`), and Alpine packages in the guest image
-(various).
+`vendor/` (LGPLv3), the Linux kernels in `guest/prebuilt/bzImage` and
+`guest/prebuilt/x86_64/bzImage` (GPLv2: unmodified v6.18 source plus
+`guest/kernel.config` and `guest/kernel-<arch>.config`), and Alpine packages in
+the guest images (various; Alpine 3.22.7 minirootfs).

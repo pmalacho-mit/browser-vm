@@ -1,11 +1,11 @@
 // Unit tests for the gate's decisions (web/gate/core.js). `npm run test:gate`
 import assert from "node:assert/strict";
-import { createVault, unlockVault, addMethod, removeMethod, methodsOf, sealValue, openValue } from "../web/gate/vault.js";
-import { validate, decide, applySecrets, makeScrubber, hostPatternProblem, hostMatches, refuseDestination, forwardHeaders, quotaCheck } from "../web/gate/core.js";
+import { createVault, unlockVault, addMethod, removeMethod, methodsOf, sealValue, openValue } from "../web/gate/vault.ts";
+import { validate, decide, applySecrets, makeScrubber, hostPatternProblem, hostMatches, refuseDestination, forwardHeaders, quotaCheck } from "../web/gate/core.ts";
 
 const enc = new TextEncoder(), dec = new TextDecoder();
 let failed = 0;
-const test = (name, fn) => { try { fn(); console.log(`PASS  ${name}`); } catch (e) { failed++; console.log(`FAIL  ${name}\n      ${e.message}`); } };
+const test = (name, fn) => { try { fn(); console.log(`PASS  ${name}`); } catch (e) { failed++; console.log(`FAIL  ${name}\n      ${/** @type {Error} */ (e).message}`); } };
 
 const cfg = validate({
   mode: "enforce",
@@ -16,7 +16,8 @@ const cfg = validate({
     "GATE-GH-TOKEN": { value: "ghp_real_abcdef", hosts: ["api.github.com"], headers: ["authorization"] },
   },
 });
-const req = (url, headers = [], body = null) => ({ url, headers, body: body && enc.encode(body) });
+/** @param {string} url @param {[string, string][]} [headers] @param {string | null} [body] */
+const req = (url, headers = [], body = null) => ({ url, headers, body: body ? enc.encode(body) : null });
 const hdr = (r, k) => r.headers.find(([n]) => n === k)?.[1];
 
 test("valid config keeps all three secrets", () => assert.deepEqual(Object.keys(cfg.secrets).sort(), ["GATE-GH-TOKEN", "GATE-HOOK-TOKEN", "GATE-OPENAI-KEY"]));
@@ -64,7 +65,7 @@ test("substituted in headers toward its host", () => {
 
 test("NOT substituted in a body by default (an LLM could hand it back transformed)", () => {
   const r = applySecrets(cfg, req("https://api.openai.com/v1/chat", [["Authorization", "Bearer GATE-OPENAI-KEY"]], '{"prompt":"reverse GATE-OPENAI-KEY"}'));
-  assert.equal(dec.decode(r.body), '{"prompt":"reverse GATE-OPENAI-KEY"}');
+  assert.equal(dec.decode(r.body ?? undefined), '{"prompt":"reverse GATE-OPENAI-KEY"}');
   assert.equal(hdr(r, "authorization"), "Bearer sk-real-openai-123");
 });
 
@@ -94,14 +95,14 @@ test("header-confined secret: only the named header", () => {
 test("anywhere: true substitutes URL and body too", () => {
   const r = applySecrets(cfg, req("https://in.hooks.example.com/t/GATE-HOOK-TOKEN", [], "token=GATE-HOOK-TOKEN"));
   assert.equal(r.url, "https://in.hooks.example.com/t/hook-real-456789");
-  assert.equal(dec.decode(r.body), "token=hook-real-456789");
+  assert.equal(dec.decode(r.body ?? undefined), "token=hook-real-456789");
 });
 
 test("switched off: refused toward its host", () => {
   const off = validate({ secrets: { "GATE-OPENAI-KEY": { value: "sk-real-openai-123", hosts: ["api.openai.com"], off: true } } });
-  assert.match(applySecrets(off, req("https://api.openai.com/", [["Authorization", "Bearer GATE-OPENAI-KEY"]])).refuse, /off/);
+  assert.match(String(applySecrets(off, req("https://api.openai.com/", [["Authorization", "Bearer GATE-OPENAI-KEY"]])).refuse), /off/);
   const expired = validate({ secrets: { "GATE-OPENAI-KEY": { value: "sk-real-openai-123", hosts: ["api.openai.com"], until: 1000 } } });
-  assert.match(applySecrets(expired, req("https://api.openai.com/", [["Authorization", "Bearer GATE-OPENAI-KEY"]]), 2000).refuse, /off/);
+  assert.match(String(applySecrets(expired, req("https://api.openai.com/", [["Authorization", "Bearer GATE-OPENAI-KEY"]]), 2000).refuse), /off/);
 });
 
 test("scrubber turns an echoed value back into its placeholder, across chunk boundaries", () => {
@@ -115,6 +116,7 @@ test("scrubber turns an echoed value back into its placeholder, across chunk bou
 });
 
 test("forwarded headers: minimal unless the request carries a secret", () => {
+  /** @type {[string, string][]} */
   const h = [["content-type", "application/json"], ["x-api-key", "k"], ["cookie", "c"], ["authorization", "a"], ["anthropic-version", "1"]];
   assert.deepEqual(forwardHeaders(h, false).map(([k]) => k), ["content-type", "authorization"]);
   assert.deepEqual(forwardHeaders(h, true).map(([k]) => k), ["content-type", "x-api-key", "authorization", "anthropic-version"]);
@@ -135,14 +137,14 @@ test("quota: sliding window, refuses the (max+1)th use", () => {
   const log = [], q = { max: 3, perHours: 1 };
   const t0 = 1_000_000_000_000;
   for (let i = 0; i < 3; i++) assert.equal(quotaCheck(log, q, t0 + i * 1000), null);
-  assert.match(quotaCheck(log, q, t0 + 5000), /over its quota/);
+  assert.match(String(quotaCheck(log, q, t0 + 5000)), /over its quota/);
   assert.equal(quotaCheck(log, q, t0 + 3_600_001), null); // the first use aged out
   assert.equal(quotaCheck([], null, t0), null);
   assert.ok(!validate({ secrets: { "GATE-X-KEY": { value: "abcdefgh123", hosts: ["a.example.com"], quota: { max: 0, perHours: 1 } } } }).secrets["GATE-X-KEY"]);
 });
 
 // ---- vault (async) ----
-const atest = async (name, fn) => { try { await fn(); console.log(`PASS  ${name}`); } catch (e) { failed++; console.log(`FAIL  ${name}\n      ${e.message}`); } };
+const atest = async (name, fn) => { try { await fn(); console.log(`PASS  ${name}`); } catch (e) { failed++; console.log(`FAIL  ${name}\n      ${/** @type {Error} */ (e).message}`); } };
 const secret = { hosts: ["api.openai.com"], headers: null, anywhere: false };
 const prf = globalThis.crypto.getRandomValues(new Uint8Array(32)); // what an authenticator's PRF extension would return
 const prfSalt = globalThis.crypto.getRandomValues(new Uint8Array(32));
@@ -200,7 +202,9 @@ await atest("vault: changing the passphrase keeps every value readable (same dat
   assert.equal(await openValue(await unlockVault(h4, { passphrase: "a new long passphrase" }), "GATE-OPENAI-KEY", { ...secret, sealed }), "sk-real-openai-123");
 });
 await atest("vault: a v1 header (passphrase only) still opens", async () => {
-  const v1 = { v: 1, kdf: header.wraps[0].kdf, wrapped: header.wraps[0].wrapped };
+  const first = /** @type {import("../web/gate/vault.ts").PassphraseWrap} */ (header.wraps[0]);
+  /** @type {import("../web/gate/vault.ts").VaultHeaderV1} */
+  const v1 = { v: 1, kdf: first.kdf, wrapped: first.wrapped };
   assert.ok(await unlockVault(v1, { passphrase: "correct horse battery" }));
 });
 

@@ -35,5 +35,7 @@ Ready. Common commands:
   npm run tls          rebuild tls/prebuilt → build/tls/tls.wasm (Go)
   npm run kernel       rebuild the guest kernel (first run clones Linux, ~2 GB)
   npm run guest        rebuild the guest image from guest/Dockerfile (Docker)
+  npm run build:x86_64 / dev:x86_64 / test:boot:x86_64 / kernel:x86_64 / guest:x86_64
+                       the same, with the experimental 64-bit VM
 Rebuild the site (npm run build) after any of the last three.
 EOF
