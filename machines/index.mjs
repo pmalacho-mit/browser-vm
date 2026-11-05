@@ -43,7 +43,7 @@ export const MACHINES = {
     description: "64-bit x86 (v86_64 fork, experimental)",
     emulatorDir: path.join(here, "x86_64/emulator"),
     kernel: [
-      path.join(repo, "build/kernel-x86_64/bzImage"),
+      path.join(root, "build/kernel-x86_64/bzImage"),
       path.join(here, "x86_64/prebuilt/bzImage"),
     ],
     runsGo: true,
