@@ -443,6 +443,7 @@ warmed up and waiting at a shell prompt, with a starter project in
 | `node-24-python-3.12` | both | 9.6 MB, 512 MiB RAM | 2.7 s |
 | `svelte-vite` | Svelte 5, Vite 7's dev server running, preview open | 43 MB, 768 MiB RAM | app shown at 17 s |
 | `sveltekit` | SvelteKit 2 (SSR, API routes), dev server running, preview open | 47 MB, 768 MiB RAM | page rendered at 3 s, interactive at 12 s |
+| `rust` | Rust 1.91 and Cargo, starter project built | 10 MB, 1 GiB RAM | 4.7 s |
 
 ```
 npm run playgrounds                  # build them all into build/playgrounds/ (1 min each; 3–6 min with a dev server)
@@ -471,6 +472,23 @@ so the templates swap in its WebAssembly build
 (`"overrides": { "rollup": "npm:@rollup/wasm-node" }`). npm packages are
 installed on the host for the guest's platform (`npm ci --cpu=ia32 --libc=musl`),
 not in the emulator.
+
+**Rust, measured** (the roadmap said to measure before promising anything).
+On the emulated CPU, in the restored playground:
+
+| | |
+|---|---|
+| `cargo run`, already built | 4.3 s |
+| rebuild after an edit | 3–12 s |
+| cold build of hello world (done at build time) | 25 s debug, 16 s release |
+| `cargo add itoa` (no dependencies of its own), then build | 47 s |
+| `serde` with `derive` plus `serde_json`, first build | 21 min 42 s |
+
+Standard-library code and small crates are fine. Crates that need procedural
+macros (`serde_derive`, anything pulling in `syn`) take tens of minutes to
+compile the first time, so the playground ships without them and its README
+says so. A variant with such crates prebuilt in the snapshot would cost every
+playground build those 20+ minutes; it isn't worth it until there's demand.
 
 When the browser restores one, the agent's `refresh` gives it this tab's clock,
 fresh randomness and the tab's CA (every copy of a snapshot starts identical).

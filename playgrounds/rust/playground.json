@@ -1,0 +1,9 @@
+{
+  "title": "Rust",
+  "description": "Rust and Cargo from Alpine 3.23, with the starter project already built.",
+  "alpine": "3.23",
+  "packages": ["rust", "cargo", "musl-dev"],
+  "warmup": ["cargo build", "cargo run", "touch src/main.rs && cargo build", "cargo build --release"],
+  "memoryMB": 1024,
+  "open": ["src/main.rs"]
+}
