@@ -90,7 +90,8 @@ export class LinuxVM {
     this.opts.log(`[vm] ${snapshot ? `restoring ${snapshot.url}` : "booting"} (${arch}): ${memoryMB} MiB RAM, network ${net ? "fetch()" : "off"}, assets from ${base}`);
     // The Go agent (guest/agent), written into the guest before a cold boot.
     // A snapshot already has its agent running, so it isn't needed then.
-    const agentP = snapshot ? null : fetch(`${base}/vm-agent`)
+    // The 64-bit build ships none (Go programs abort on the v86_64 fork; scripts/targets.mjs).
+    const agentP = snapshot || arch === "x86_64" ? null : fetch(`${base}/vm-agent`)
       .then(async (r) => (r.ok ? new Uint8Array(await r.arrayBuffer()) : null))
       .catch(() => null);
     // The TLS terminator downloads in parallel with the rest of the VM.

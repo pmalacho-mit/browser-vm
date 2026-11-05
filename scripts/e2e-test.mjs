@@ -18,7 +18,8 @@ const dist = path.join(root, "dist");
 const vmDir = path.join(dist, "extensions/linux-vm/vm");
 if (!fs.existsSync(path.join(vmDir, "fs.json"))) { console.error("no build in dist/: run npm run build first"); process.exit(1); }
 const has = (/** @type {string} */ id) => fs.existsSync(path.join(vmDir, "playgrounds", id, "manifest.json"));
-const arch = fs.readFileSync(path.join(dist, "runtime/worker.js"), "utf8").includes('"x86_64"') ? "x86_64" : "i686";
+// The build defines __VM_ARCH__: "const arch = true ? \"x86_64\" : …" in the bundle.
+const arch = /const arch = true \? "x86_64"/.test(fs.readFileSync(path.join(dist, "runtime/worker.js"), "utf8")) ? "x86_64" : "i686";
 
 const check = (/** @type {string} */ name, /** @type {boolean} */ ok, detail = "") => {
   console.log(`${ok ? "PASS" : "FAIL"}  ${name}${detail ? "  — " + detail : ""}`);
@@ -46,6 +47,10 @@ async function newPage() {
   page.on("response", (r) => { if (r.status() >= 400 && r.url().startsWith(base) && !KNOWN.test(r.url())) errors.push(`${r.status()} ${r.url()}`); });
   return { page, errors };
 }
+/** What the preview frames show, for a failure message. */
+const previewText = async (/** @type {import("playwright").Page} */ page) =>
+  (await Promise.all(page.frames().filter((f) => /\.preview\.localhost/.test(f.url()))
+    .map(async (f) => `${f.url()}: ${JSON.stringify(await f.locator("body").innerText({ timeout: 2000 }).catch(() => "?"))}`))).join(" | ") || "no preview frame";
 const previewFrame = (/** @type {import("playwright").Page} */ page) => page.frames().find((f) => /\.preview\.localhost/.test(f.url()) && !/__vm_preview__/.test(f.url()));
 
 // ---- VS Code: boot, Explorer, terminal, gate -------------------------------------------
@@ -115,8 +120,10 @@ if (!has("svelte-vite")) {
   const { page, errors } = await newPage();
   await page.goto(`${base}lite/?playground=svelte-vite`);
   const app = page.frameLocator("#preview-frame");
-  const h1 = await app.locator("h1").first().innerText({ timeout: 120_000 }).catch((e) => `ERR ${e.message.split("\n")[0]}`);
-  check("the preview shows the app from the VM's dev server", /Hello from Svelte/.test(h1), `${JSON.stringify(h1)} at ${secs()}`);
+  // The first load may show "Nothing is listening yet", which retries every 2 s: wait for the app.
+  const shown = await app.locator("h1", { hasText: "Hello from Svelte" }).waitFor({ timeout: 120_000 }).then(() => true, () => false);
+  const what = shown ? "" : await previewText(page);
+  check("the preview shows the app from the VM's dev server", shown, shown ? secs() : what);
   const frame = previewFrame(page);
   check("on its own origin", !!frame && new URL(frame.url()).origin !== new URL(base).origin, frame?.url());
   await frame?.evaluate(() => { /** @type {any} */ (window).__marker = 1; });
@@ -136,8 +143,8 @@ if (has("svelte-vite")) {
   let frame;
   for (let i = 0; i < 240 && !frame; i++) { frame = previewFrame(page); if (!frame) await page.waitForTimeout(500); }
   check("the Simple Browser opens the preview by itself", !!frame, secs());
-  const h1 = frame ? await frame.locator("h1").first().innerText({ timeout: 90_000 }).catch(() => "") : "";
-  check("and shows the app", /Hello from Svelte/.test(h1), JSON.stringify(h1));
+  const shown = frame ? await frame.locator("h1", { hasText: "Hello from Svelte" }).waitFor({ timeout: 90_000 }).then(() => true, () => false) : false;
+  check("and shows the app", shown, shown ? secs() : await previewText(page));
   check("no page errors", errors.length === 0, errors.slice(0, 4).join(" | "));
   await page.close();
 }

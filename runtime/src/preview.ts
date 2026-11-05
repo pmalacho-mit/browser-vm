@@ -95,8 +95,20 @@ export class PreviewGateway {
     this.port = port;
   }
 
-  /** Opens a TCP connection to the guest's port; fails if nothing listens there. */
-  private _open(): Promise<V86TcpConnection> {
+  /**
+   * Opens a TCP connection to the guest's port; fails if nothing listens there.
+   * A refusal is retried: each try uses a new random source port, and the guest
+   * may still hold an old connection on one (TIME_WAIT, e.g. from a snapshot's
+   * warm-up), which it answers with a reset.
+   */
+  private async _open(): Promise<V86TcpConnection> {
+    for (let attempt = 1; ; attempt++) {
+      try { return await this._connectOnce(); }
+      catch (e) { if ((e as { code?: string }).code !== "Refused" || attempt >= 3) throw e; }
+    }
+  }
+
+  private _connectOnce(): Promise<V86TcpConnection> {
     const net = this.vm.emulator?.network_adapter;
     if (!net) return Promise.reject(Object.assign(new Error("the VM has no network adapter (is linuxVm.network off?)"), { code: "NoNetwork" }));
     return new Promise((resolve, reject) => {

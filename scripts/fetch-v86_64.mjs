@@ -19,7 +19,8 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 
-const REPO = process.env.V86_64_REPO || "portlandhodl/v86_64";
+// This project's fork (of portlandhodl/v86_64), which carries the 64-bit snapshot fix.
+const REPO = process.env.V86_64_REPO || "pmalacho-mit/v86_64";
 const FILES = ["libv86.mjs", "v86.wasm", "v86-fallback.wasm"];
 const out = path.resolve(import.meta.dirname, "../vendor/v86_64");
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Rebuilds vendor/v86_64/ (the 64-bit emulator used when VM_ARCH=x86_64) FROM
-# SOURCE, at a pinned commit of https://github.com/portlandhodl/v86_64.
+# SOURCE, at a pinned commit of https://github.com/pmalacho-mit/v86_64 (this
+# project's fork of portlandhodl/v86_64).
 #
 # Usually you want `npm run v86_64` instead (scripts/fetch-v86_64.mjs): it takes the
 # fork's own CI build and verifies it. Build from source to check that build,
@@ -16,8 +17,8 @@
 #   V86_64_REPO=<owner>/v86_64 V86_64_COMMIT=<sha> scripts/build-v86_64.sh   # another fork
 set -euo pipefail
 cd "$(dirname "$0")/.."
-COMMIT="${V86_64_COMMIT:-c394574477b57eadfc859f593b4aecb08fa37cb6}"
-REPO="${V86_64_REPO:-portlandhodl/v86_64}"
+COMMIT="${V86_64_COMMIT:-4e9b7b4cc912507919d9f37991eefab51e12d9f9}"
+REPO="${V86_64_REPO:-pmalacho-mit/v86_64}"
 SRC=build/v86_64-src
 OUT=vendor/v86_64
 

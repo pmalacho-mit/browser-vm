@@ -35,7 +35,7 @@ export const ARCHES = {
     kernel: ["build/kernel-x86_64/bzImage", "guest/prebuilt/x86_64/bzImage"],
     guest: ["build/guest-x86_64", "guest/prebuilt/x86_64/guest"],
     // The Go agent aborts on the v86_64 fork ("sysMemStat overflow", an emulation
-    // bug; docs/v86_64-fork), so the 64-bit VM keeps the image's shell agent.
+    // bug; vendor/v86_64/PROVENANCE.md), so the 64-bit VM keeps the image's shell agent.
     agent: null,
   },
 };

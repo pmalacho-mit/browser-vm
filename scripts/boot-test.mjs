@@ -159,9 +159,7 @@ r = r.split("\n").slice(-2).join(" | ");
 check("guest rejects the cert without the tab's CA (it really verifies)", /rc=1$/.test(r), r);
 
 // ---- snapshot round trip: save, restore into a new emulator (a "new tab"), refresh ----
-if (vmTarget.arch === "x86_64") {
-  console.log("SKIP  snapshot round trip — the v86_64 fork can't restore 64-bit state yet (docs/v86_64-fork)");
-} else {
+{
   await sh("sync");
   const state = await vm.save_state();
   await vm.stop();
@@ -177,8 +175,18 @@ if (vmTarget.arch === "x86_64") {
   });
   const two = wire(vm2);
   await new Promise((res) => vm2.add_listener("emulator-loaded", res));
-  two.agent.assume(2);
   const t1 = Date.now();
+  if (!goAgent) {
+    // The shell agent has no refresh: check that the restored machine runs and kept its files.
+    const echoed = await two.sh("echo restored-$((6*7))");
+    check("restore: the shell answers", echoed === "restored-42", `${Date.now() - t1} ms after load; ${JSON.stringify(echoed)}`);
+    check("project files survive the snapshot", dec.decode(await vm2.read_file("/root/project/g.txt")).trim() === "from-guest");
+    console.log("SKIP  refresh after restore (clock, randomness, CA): needs the Go agent, which this VM can't run yet");
+    await vm2.stop();
+    console.log(`done in ${elapsed()}`);
+    process.exit();
+  }
+  two.agent.assume(2);
   const refreshed = await two.agent.request({ cmd: "refresh", seed: freshSeed(), timeMs: Date.now() + ahead });
   check("restore + agent refresh", refreshed.ok && refreshed.caReplaced === 1,
     `${Date.now() - t1} ms after load; ${refreshed.ok ? `CA replaced: ${refreshed.caReplaced}` : refreshed.error}`);

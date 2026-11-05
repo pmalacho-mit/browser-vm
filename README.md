@@ -381,7 +381,7 @@ One switch selects the VM's CPU architecture for every script:
 
 | | `VM_ARCH=i686` (default) | `VM_ARCH=x86_64` |
 |---|---|---|
-| Emulator | upstream v86 (npm) | [v86_64](https://github.com/portlandhodl/v86_64) fork, `vendor/v86_64/` (pinned commit) |
+| Emulator | upstream v86 (npm) | [v86_64](https://github.com/pmalacho-mit/v86_64) fork (this project's, of portlandhodl/v86_64), `vendor/v86_64/` (pinned commit) |
 | Kernel config | `guest/kernel.config` + `kernel-i686.config` | `guest/kernel.config` + `kernel-x86_64.config` |
 | Prebuilt kernel + image | `guest/prebuilt/` | `guest/prebuilt/x86_64/` |
 | Local builds | `build/kernel/`, `build/guest/` | `build/kernel-x86_64/`, `build/guest-x86_64/` |
@@ -416,12 +416,10 @@ binary from npm (`@biomejs/cli-linux-x64-musl`) runs in the 64-bit VM
 
 **Known gaps.** The Go guest agent aborts on the fork ("sysMemStat overflow",
 an emulation bug), so the 64-bit VM uses the image's shell agent: terminals work,
-but `exec`, `ports` and `refresh` don't. And **snapshots don't restore.** `save_state()` works, but a restored
-64-bit VM triple-faults on its next interrupt ("page fault during #DF
-delivery"), with the CI build and with a locally built one alike; the 32-bit VM
-restores fine. Anything built on snapshots (resuming a session, quickboot
-playgrounds) is 32-bit only until the fork fixes it.
-`npm run profile:boot:x86_64` reproduces it. Cold boots are unaffected.
+but `exec`, `ports` and `refresh` don't. **Snapshots restore** since the fork's
+commit `4e9b7b4c` (they used to triple-fault), and `test:boot:x86_64` checks it.
+Playgrounds still need the Go agent (for `refresh`, and to build them), so they
+stay 32-bit until Go runs on the fork.
 
 The fork is about a month old, maintained by one person, and accepts only
 AI-generated contributions. `vendor/v86_64/PROVENANCE.md` records the pinned

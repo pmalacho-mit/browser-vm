@@ -3,24 +3,25 @@
 The emulator used when the site is built with `VM_ARCH=x86_64`: a fork of v86
 that adds x86-64 long mode and a 64-bit JIT.
 
-source:  https://github.com/portlandhodl/v86_64 (forked from copy/v86 on 2026-10-02)
-commit:  c394574477b57eadfc859f593b4aecb08fa37cb6 (2026-10-15, "Merge pull request #43")
+source:  https://github.com/pmalacho-mit/v86_64, this project's fork of
+         https://github.com/portlandhodl/v86_64 (itself forked from copy/v86 on 2026-10-02)
+commit:  4e9b7b4cc912507919d9f37991eefab51e12d9f9 (2026-11-05, "Merge pull request #2
+         from pmalacho-mit/issue/1"): portlandhodl's c3945744 plus the 64-bit
+         snapshot fix (03001ff1, "Save and restore the 64-bit CPU state")
 build:   the fork's own CI ("CI" workflow, push of that commit), published by
-         github-actions[bot] as release `latest` on 2026-10-15T02:52:51Z
+         github-actions[bot] as release `latest` on 2026-11-05T04:46:44Z
 license: BSD-2-Clause (`LICENSE`); `src/floppy.js` contains MIT-licensed code (`LICENSE.MIT`).
          Both files are taken from the commit above.
 
 | file | SHA-256 | what |
 |---|---|---|
-| `libv86.mjs` | `443d8bea59edb13fa701eb9f13bdc1e78a85925b75c005723c95ce5a4245d262` | JavaScript side (Closure Compiler build) |
-| `v86.wasm` | `fc9e655c68eaf8aed50ccf987897bfb211ae793832b498a6d9c6a4733618ad2b` | CPU + JIT core |
-| `v86-fallback.wasm` | `5438fe367c032bf45e9dac7dd23e5823f251525dc7e062c6a860d0d7707ecd13` | the same without SIMD/bulk memory, for engines lacking them |
+| `libv86.mjs` | `91caf03ec451a667eecb2e9e494b16f674c803f76e92549f702f3f8419330561` | JavaScript side (Closure Compiler build) |
+| `v86.wasm` | `f73d6b1f6a111263c5401c19f064809440aaf141aa6110bf2675ff8f428143b7` | CPU + JIT core |
+| `v86-fallback.wasm` | `5adb41cdebe97570a4374268594f2619ef9ccf5c5a41ad44f8404818e9e8690c` | the same without SIMD/bulk memory, for engines lacking them |
 
 The checksums match the digests GitHub records for the release assets, checked
-on 2026-11-05. `libv86.mjs` was also rebuilt from source at that commit
-(`make build/libv86.mjs` in `docs/v86_64-fork/.devcontainer`, linux/arm64) and
-came out byte-identical. The `.wasm` files differ when rebuilt (newer Rust and
-clang than the CI run), as expected. The release also has `v86-mem64.wasm` and debug builds, which
+on 2026-11-05 by `npm run v86_64` (`V86_64_REPO=pmalacho-mit/v86_64` then; now
+the default). The release also has `v86-mem64.wasm` and debug builds, which
 this project doesn't use.
 
 ## Updating
@@ -39,6 +40,11 @@ Bump the commit deliberately, update this file, and rerun both
 
 ## History
 
+- 2026-11-05: moved from portlandhodl/v86_64 at `c3945744` to this project's
+  fork at `4e9b7b4c`, for the snapshot fix. The previous files' SHA-256s were
+  `443d8bea…` (libv86.mjs), `fc9e655c…` (v86.wasm), `5438fe36…` (v86-fallback.wasm);
+  that `libv86.mjs` had been rebuilt from source and came out byte-identical.
+
 The first copy of these files came from another agent's integration package,
 built in a sandbox that couldn't reach static.rust-lang.org (Rust 1.91.1 with
 `-Zbuild-std`, then `wasm-opt -O3`). Its `libv86.mjs` was byte-identical to
@@ -55,13 +61,14 @@ consoles, vm-init/vm-agent, fetch()/TLS network) runs on it unchanged; see
 `npm run test:boot:x86_64` and `scripts/compare-64.mjs`. Known limits per the
 fork's README: one CPU, guest RAM below 4 GiB, no AVX.
 
-Found here (2026-11-05): **snapshot restore fails.** `save_state()` succeeds,
-but an emulator started with that state panics on the next interrupt:
-`Triple fault: page fault during #DF delivery, cr2=ec0` (`src/rust/cpu/cpu.rs:3756`).
-This happens with the CI build and with a source build of the same commit; upstream
-v86 restores the same project's 32-bit VM fine. Likely some 64-bit CPU state is
-missing from the saved state. Not reported to the fork as of this date.
-Reproduce with `npm run profile:boot:x86_64`; check again when bumping the commit.
+**Snapshot restore: fixed at `4e9b7b4c`.** Before, a restored 64-bit VM
+triple-faulted on its next interrupt (`page fault during #DF delivery`): the
+64-bit CPU state wasn't in the saved state. `npm run test:boot:x86_64` now
+restores a snapshot and checks the shell answers and files survive.
+
+**Still open: Go programs abort** ("sysMemStat overflow"), so the 64-bit VM
+can't run the Go guest agent and keeps the image's shell agent (no `exec`,
+`ports` or `refresh`). Playgrounds need the Go agent, so they stay 32-bit.
 
 It also relies on the same v86 internals as the 32-bit build
 (`types/v86-internals.d.ts`: `fs9p`, `bus`, the fake network's TCP
