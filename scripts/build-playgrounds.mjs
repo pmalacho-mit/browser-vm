@@ -29,6 +29,7 @@ import { attachFetchNetwork, loadTLS, writeGuestFile } from "../runtime/src/net.
 import { GUEST_CMDLINE } from "../runtime/src/guest-config.ts";
 import { installBlobCache } from "../runtime/src/blob-cache.ts";
 import { AgentClient, installAgent } from "../runtime/src/agent-client.ts";
+import { PreviewGateway } from "../runtime/src/preview.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
 const fromRoot = (/** @type {string[]} */ ...p) => path.join(root, ...p);
@@ -142,6 +143,16 @@ async function assemble(/** @type {string} */ id, /** @type {Manifest} */ m) {
   copyTree(fromRoot("guest/overlay"), rootDir);
   fs.rmSync(path.join(rootDir, "root/project"), { recursive: true, force: true });
   copyTree(fromRoot("playgrounds", id, "template"), path.join(rootDir, "root/project"));
+  if (m.npm) {
+    // npm packages for the guest's platform, installed on the host: much faster
+    // than npm in the emulator, and it needs no x86 code here. Install scripts
+    // are skipped (they would run for the host); the packages that matter for
+    // a playground pick their platform binaries at run time.
+    const cpu = { i686: "ia32", x86_64: "x64" }[vm.arch];
+    run("npm", ["ci", "--os=linux", `--cpu=${cpu}`, "--libc=musl", "--ignore-scripts", "--no-audit", "--no-fund"],
+      { cwd: path.join(rootDir, "root/project") });
+    log(`${id}: npm ci for linux-${cpu}-musl`);
+  }
   const tar = path.join(dir, "rootfs.tar");
   run("tar", ["-C", rootDir, "--owner=0", "--group=0", "--numeric-owner", "-cf", tar, ...fs.readdirSync(rootDir)]);
   return tar;
@@ -203,9 +214,56 @@ async function snapshot(/** @type {string} */ id, /** @type {Manifest} */ m) {
     warmMs.push(r.ms);
     log(`${id}: ${cmd}  (${(r.ms / 1000).toFixed(1)} s)  ${r.text.trim().split("\n").pop()?.slice(0, 100) ?? ""}`);
   }
+  if (m.server) {
+    // Start the dev server and let it do its slow first work (dependency
+    // scanning, first transforms) now, so the snapshot has it ready.
+    const { command, port, warm = ["/"] } = m.server;
+    await sh(`setsid sh -c ${JSON.stringify(`cd /root/project && exec ${command}`)} > /var/log/dev-server.log 2>&1 < /dev/null &`);
+    const t = Date.now();
+    for (;;) {
+      const r = await agent.request({ cmd: "ports" });
+      if (r.ok && (/** @type {number[]} */ (r.ports)).includes(port)) break;
+      if (Date.now() - t > 600_000) throw new Error(`${id}: the server didn't listen on ${port}:\n${(await sh("tail -30 /var/log/dev-server.log")).text}`);
+      await new Promise((res) => setTimeout(res, 500));
+    }
+    log(`${id}: ${command} listening on ${port} (${((Date.now() - t) / 1000).toFixed(1)} s)`);
+    // Fetch what a browser would: the pages, then every module their code
+    // imports, as the dev server rewrote them (so the URLs match exactly). Each
+    // first request makes the server transform that file; the snapshot keeps
+    // the results. Requests come in over the fake network, as previews do.
+    const gw = new PreviewGateway(/** @type {any} */ ({ emulator }), port);
+    const queue = [...warm], seen = new Set(queue), tries = new Map();
+    const tc = Date.now();
+    let bytes = 0;
+    while (queue.length && seen.size < 2000) {
+      const p = /** @type {string} */ (queue.shift());
+      const t1 = Date.now();
+      const r = await gw.http({ method: "GET", path: p, headers: [["accept", "*/*"]] }).catch((e) => ({ status: 0, headers: [], body: new Uint8Array(), error: e.message }));
+      bytes += r.body.length;
+      if (Date.now() - t1 > 3000) log(`${id}: GET ${p}  ${r.status} (${((Date.now() - t1) / 1000).toFixed(1)} s)`);
+      // A first server render can outlast the gateway's timeout; the server
+      // finishes it anyway, and the next try is quick.
+      if (r.status === 0 && (tries.get(p) ?? 0) < 2) { tries.set(p, (tries.get(p) ?? 0) + 1); queue.push(p); continue; }
+      const type = r.headers.find(([k]) => k === "content-type")?.[1] ?? "";
+      if (r.status !== 200 || !/javascript|html/.test(type)) continue;
+      const text = new TextDecoder().decode(r.body);
+      const found = [...text.matchAll(/(?:\bfrom\s*|\bimport\s*\(?\s*|<script[^>]*\bsrc=|<link[^>]*\bhref=)["'](\/[^"'\s]+)["']/g)].map((m) => m[1]);
+      for (const f of found) if (!seen.has(f) && !f.startsWith("//")) { seen.add(f); queue.push(f); }
+    }
+    warmMs.push(Date.now() - tc);
+    log(`${id}: warmed ${seen.size} URLs, ${(bytes / 1e6).toFixed(1)} MB (${((Date.now() - tc) / 1000).toFixed(1)} s)`);
+  }
   const versions = (await sh("apk info -v 2>/dev/null | sort")).text.trim().split("\n");
   // Leave nothing tab-specific behind; clear the consoles so a restored terminal starts clean.
   await sh("rm -rf /tmp/* /root/.ash_history; sync");
+  // Smaller snapshots: drop caches nothing is using, then overwrite free RAM with
+  // zeros (which compress to nothing). Freed pages otherwise keep whatever they
+  // held, and the snapshot stores all of RAM. Running programs keep their pages.
+  const zeroed = await sh("echo 3 > /proc/sys/vm/drop_caches; " +
+    "mb=$(( $(awk '/MemFree/ {print $2}' /proc/meminfo) / 1024 - 32 )); [ $mb -gt 0 ] || exit 0; " +
+    "mkdir -p /run/zero && mount -t tmpfs -o size=${mb}m tmpfs /run/zero && " +
+    "dd if=/dev/zero of=/run/zero/z bs=1M count=$mb 2>/dev/null; rm -f /run/zero/z; umount /run/zero; rmdir /run/zero; echo $mb");
+  log(`${id}: zeroed ${zeroed.text.trim() || 0} MB of free RAM (${(zeroed.ms / 1000).toFixed(1)} s)`);
   for (const port of [0, 2, 3]) emulator.serial_send_bytes(port, enc.encode("clear\n"));
   await new Promise((res) => setTimeout(res, 1500));
 
@@ -221,6 +279,7 @@ async function snapshot(/** @type {string} */ id, /** @type {Manifest} */ m) {
     id, title: m.title, description: m.description, arch: vm.arch, alpine: m.alpine,
     packages: versions.filter((v) => m.packages.some((p) => v.startsWith(p + "-"))),
     memoryMB: m.memoryMB, open: m.open ?? [],
+    ...(m.server && { server: { port: m.server.port, log: "/var/log/dev-server.log" } }),
     state: "state.bin.zst", stateBytes: zst.length,
     emulator: fileId(vm.wasm), kernel: fileId(vm.kernel), agent: fileId(/** @type {string} */ (vm.agent)),
     warmupMs: warmMs, built: new Date().toISOString(),
@@ -237,10 +296,12 @@ function pick(/** @type {string[]} */ ...c) {
 
 /**
  * @typedef {{ title: string, description: string, alpine: string, packages: string[],
- *             warmup?: string[], memoryMB: number, open?: string[] }} Manifest
+ *             warmup?: string[], memoryMB: number, open?: string[], npm?: boolean,
+ *             server?: { command: string, port: number, warm?: string[] } }} Manifest
  * @typedef {{ id: string, title: string, description: string, arch: string, alpine: string,
  *             packages: string[], memoryMB: number, open: string[], state: string, stateBytes: number,
- *             emulator: string, kernel: string, agent: string, warmupMs: number[], built: string }} PlaygroundManifest
+ *             emulator: string, kernel: string, agent: string, warmupMs: number[], built: string,
+ *             server?: { port: number, log: string } }} PlaygroundManifest
  */
 
 // ---- main ---------------------------------------------------------------------------

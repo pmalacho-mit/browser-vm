@@ -1,0 +1,10 @@
+{
+  "title": "SvelteKit",
+  "description": "SvelteKit 2 with server-side rendering, its dev server already running, on Node.js 24.",
+  "alpine": "3.23",
+  "packages": ["nodejs", "npm"],
+  "npm": true,
+  "server": { "command": "npm run dev", "port": 5173, "warm": ["/", "/api/time", "/@vite/client", "/src/routes/+page.svelte"] },
+  "memoryMB": 768,
+  "open": ["src/routes/+page.svelte", "src/routes/+page.server.js"]
+}

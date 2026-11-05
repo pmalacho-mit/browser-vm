@@ -1,0 +1,20 @@
+{
+  "name": "sveltekit-playground",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev --host 0.0.0.0 --port 5173 --strictPort",
+    "build": "vite build",
+    "start": "PORT=3000 node build"
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-node": "5.5.7",
+    "@sveltejs/kit": "2.70.3",
+    "@sveltejs/vite-plugin-svelte": "6.2.4",
+    "svelte": "5.57.3",
+    "vite": "7.3.7"
+  },
+  "overrides": {
+    "rollup": "npm:@rollup/wasm-node@4.67.5"
+  }
+}

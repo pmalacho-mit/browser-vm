@@ -9,6 +9,8 @@
 //   web/boot.ts                  → dist/boot.js
 //   web/amd-config.ts            → dist/amd-config.js
 //   web/lite/lite.ts             → dist/lite/lite.js                            the lightweight frontend
+//   web/__vm_preview__/*.ts      → dist/__vm_preview__/{boot,client}.js         preview origins (classic scripts)
+//                                   dist/__vm_preview_sw.js                      and their service worker (scope "/")
 //   web/gate/gate.ts             → dist/gate/gate.js (+ chunks/ for manage.ts)  ES module; the gate's CSP is script-src 'self'
 //
 // The runtime's `import { V86 } from "v86"` resolves to the emulator of the
@@ -89,6 +91,20 @@ export function esbuildTargets(dist, vm) {
         outdir: path.join(dist, "lite"),
         format: "iife",
         loader: { ".css": "css" },
+      },
+    },
+    {
+      name: "preview",
+      options: {
+        ...common,
+        entryPoints: {
+          "__vm_preview__/boot": fromRoot("web/__vm_preview__/boot.ts"),
+          "__vm_preview__/client": fromRoot("web/__vm_preview__/client.ts"),
+          // At the root, so its scope can be the whole preview origin.
+          "__vm_preview_sw": fromRoot("web/__vm_preview__/sw.ts"),
+        },
+        outdir: dist,
+        format: "iife",
       },
     },
     {

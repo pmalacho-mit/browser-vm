@@ -10,7 +10,8 @@ import type { Runtime } from "../../runtime/src/runtime.ts";
 export function fileSearchProvider(rt: Client<Runtime>): vscode.FileSearchProvider {
   return {
     async provideFileSearchResults(query, options) {
-      const paths = await rt.api.searchFiles(options.folder.path, query.pattern || "", options.maxResults || 1000);
+      // search.exclude and files.exclude arrive as options.excludes: excluded folders aren't even read.
+      const paths = await rt.api.searchFiles(options.folder.path, query.pattern || "", options.maxResults || 1000, { includes: options.includes, excludes: options.excludes });
       return paths.map((path) => options.folder.with({ path }));
     },
   };
@@ -19,7 +20,9 @@ export function fileSearchProvider(rt: Client<Runtime>): vscode.FileSearchProvid
 export function textSearchProvider(rt: Client<Runtime>): vscode.TextSearchProvider {
   return {
     async provideTextSearchResults(query, options, progress, token) {
-      const { matches, limitHit } = await rt.api.searchText(options.folder.path, query, { maxResults: options.maxResults, maxFileSize: options.maxFileSize });
+      const { matches, limitHit } = await rt.api.searchText(options.folder.path, query, {
+        maxResults: options.maxResults, maxFileSize: options.maxFileSize, includes: options.includes, excludes: options.excludes,
+      });
       for (const m of matches) {
         if (token.isCancellationRequested) break;
         progress.report({

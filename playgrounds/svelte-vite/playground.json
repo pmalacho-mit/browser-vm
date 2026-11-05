@@ -1,0 +1,10 @@
+{
+  "title": "Svelte + Vite",
+  "description": "Svelte 5 with Vite 7's dev server already running, on Node.js 24.",
+  "alpine": "3.23",
+  "packages": ["nodejs", "npm"],
+  "npm": true,
+  "server": { "command": "npm run dev", "port": 5173, "warm": ["/", "/src/main.js", "/src/App.svelte", "/@vite/client"] },
+  "memoryMB": 768,
+  "open": ["src/App.svelte"]
+}

@@ -5,10 +5,15 @@
 import { Runtime } from "./runtime.ts";
 import { channelEndpoint, serve } from "./rpc.ts";
 
-addEventListener("message", (e: MessageEvent<{ channel?: string }>) => {
+let runtime: Runtime | undefined;
+addEventListener("message", (e: MessageEvent<{ channel?: string; preview?: number }>) => {
   const name = e.data?.channel;
-  if (!name || (globalThis as { __served?: boolean }).__served) return;
-  (globalThis as { __served?: boolean }).__served = true;
-  const runtime = new Runtime();
-  runtime.emit = serve(channelEndpoint(new BroadcastChannel(name)), runtime);
+  if (name && !runtime) {
+    runtime = new Runtime();
+    runtime.emit = serve(channelEndpoint(new BroadcastChannel(name)), runtime);
+  }
+  // A preview origin's connection to one guest port (web/runtime-host.ts).
+  if (runtime && typeof e.data?.preview === "number" && e.ports[0]) {
+    runtime._preview(e.data.preview, e.ports[0]).catch((err) => console.warn(`[preview] ${err.message}`));
+  }
 });

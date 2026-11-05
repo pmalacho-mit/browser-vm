@@ -76,6 +76,7 @@ window.product = {
     "extensions.ignoreRecommendations": true,
     "linuxVm.gateChannel": window.__vmGateChannel,
     "linuxVm.runtimeChannel": window.__vmRuntimeChannel,
+    "linuxVm.previewUrl": window.__vmPreviewUrl ?? "",
     "linuxVm.playground": /^[a-z0-9][a-z0-9.-]{0,63}$/.test(playground) ? playground : "",
   },
 };

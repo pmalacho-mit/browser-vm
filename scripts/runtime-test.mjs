@@ -7,7 +7,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { Runtime } from "../runtime/src/runtime.ts";
-import { connect, endpointPair, serve } from "../runtime/src/rpc.ts";
+import { connect, endpointPair, portEndpoint, serve } from "../runtime/src/rpc.ts";
+import { parseResponse } from "../runtime/src/preview.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
 const assetBase = path.join(root, "dist/extensions/linux-vm/vm");
@@ -48,6 +49,7 @@ function start() {
 {
   const { runtime, c } = start();
   const fsEvents = [], states = [];
+  void runtime;
   c.on("fs", (changes) => fsEvents.push(...changes));
   c.on("state", (s) => states.push(s));
   let termOut = "";
@@ -55,7 +57,8 @@ function start() {
 
   // A frontend may ask for files before boot(): the call waits for it.
   const early = c.api.stat("/root/project/README.md");
-  const booted = await c.api.boot({ assetBase, memoryMB: 256, network: "off" });
+  // The network is on (a NIC, for previews) but there's no gate: nothing gets out.
+  const booted = await c.api.boot({ assetBase, memoryMB: 256, network: "fetch" });
   check("boot() answers", typeof booted === "object", JSON.stringify(booted));
   const st = await early;
   check("a call made before boot() waits for the VM", st.kind === "file" && st.size > 0, `${st.kind}, ${st.size} bytes`);
@@ -89,6 +92,11 @@ function start() {
   const text = await c.api.searchText("/root/project", { pattern: "from the runtime" });
   check("searchText", text.matches.some((m) => m.path === "/root/project/rt/hello.txt" && m.line === 0), JSON.stringify(text.matches).slice(0, 160));
 
+  const excluded = await c.api.searchText("/root/project", { pattern: "from the runtime" }, { excludes: ["**/rt"] });
+  check("searchText: excluded folders are skipped", excluded.matches.length === 0, `${excluded.matches.length} matches`);
+  const included = await c.api.searchFiles("/root/project", "", 50, { includes: ["**/*.txt"] });
+  check("searchFiles: includes", included.length > 0 && included.every((p) => p.endsWith(".txt")), included.join(", "));
+
   // terminals
   const t1 = await c.api.openTerminal({ rows: 30, cols: 100 });
   await until(() => /\$ (\x1b\[6n)?$/.test(termOut), "prompt");
@@ -106,6 +114,40 @@ function start() {
 
   const ports = await c.api.ports();
   check("ports()", Array.isArray(ports), JSON.stringify(ports));
+
+  // previews: a gateway for one guest port, on a MessagePort of its own
+  const r1 = parseResponse(enc.encode("HTTP/1.1 100 Continue\r\n\r\nHTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nX-A: 1\r\n\r\n5\r\nhello\r\n6;ext=1\r\n world\r\n0\r\n\r\n"));
+  check("parseResponse: 100-continue, chunked, headers", r1.status === 200 && dec.decode(r1.body) === "hello world" && r1.headers.some(([k, v]) => k === "x-a" && v === "1") && !r1.headers.some(([k]) => k === "transfer-encoding"));
+  const r2 = parseResponse(enc.encode("HTTP/1.0 404 Not Found\r\nContent-Length: 3\r\n\r\nabcdef"));
+  check("parseResponse: content-length", r2.status === 404 && dec.decode(r2.body) === "abc");
+  // A one-request HTTP server: busybox nc runs the script with the connection as stdin/stdout.
+  await c.api.write("/root/srv.sh", enc.encode("read line; echo \"$line\" > /root/request\n" +
+    "printf 'HTTP/1.1 200 OK\\r\\nContent-Type: text/plain\\r\\nTransfer-Encoding: chunked\\r\\n\\r\\n5\\r\\nhello\\r\\n0\\r\\n\\r\\n'\n"));
+  await c.api.exec(["sh", "-c", "nc -l -p 8000 -e sh /root/srv.sh </dev/null >/dev/null 2>&1 &"]);
+  await c.api.exec(["sh", "-c", "nc -l -p 8001 -e cat </dev/null >/dev/null 2>&1 &"]);
+  for (let i = 0; i < 40; i++) { if ((await c.api.ports()).includes(8001)) break; await new Promise((r) => setTimeout(r, 100)); }
+  const pick = (port) => {
+    const ch = new MessageChannel();
+    runtime._preview(port, ch.port1);
+    /** @type {import("../runtime/src/rpc.ts").Client<import("../runtime/src/preview.ts").PreviewGateway>} */
+    const gw = connect(portEndpoint(ch.port2));
+    return { gw, ch };
+  };
+  const p8000 = pick(8000);
+  const res = await p8000.gw.api.http({ method: "GET", path: "/hi?x=1", headers: [["accept", "text/plain"], ["cookie", "dropped"]] });
+  check("preview: HTTP into the guest", res.status === 200 && dec.decode(res.body) === "hello", `${res.status} ${JSON.stringify(dec.decode(res.body))}`);
+  check("preview: the guest saw the request", dec.decode(await c.api.read("/root/request")).startsWith("GET /hi?x=1 HTTP/1.1"));
+  const refused = await p8000.gw.api.http({ method: "GET", path: "/", headers: [] }).then(() => null, (e) => e.code);
+  check("preview: a closed port is refused", refused === "Refused", refused);
+  const p8001 = pick(8001);
+  const got = [];
+  p8001.gw.on("socket-data", (m) => got.push(dec.decode(m.data)));
+  const sid = await p8001.gw.api.socketOpen();
+  await p8001.gw.api.socketWrite(sid, enc.encode("ping over tcp\n"));
+  await until(() => got.join("").includes("ping over tcp"), "echo", 10000).catch(() => {});
+  check("preview: raw socket round trip (WebSockets use these)", got.join("").includes("ping over tcp"), JSON.stringify(got.join("")));
+  await p8001.gw.api.socketClose(sid);
+  for (const p of [p8000, p8001]) { p.ch.port1.close(); p.ch.port2.close(); }
   await c.api.destroy();
 }
 

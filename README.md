@@ -318,9 +318,9 @@ set `WEBVIEW_HOST` for self-hosted webviews.
 
 Without it, the VM reaches every CORS-enabled site, which covers most package
 registries. With it, users can also reach sites that refuse browser access,
-such as `git clone` from github.com, one site at a time. Load it unpacked from
-`chrome://extensions`, then edit `APP_ORIGINS` in `policy.js` and `matches` in
-`manifest.json` for your gate's origin.
+such as `git clone` from github.com, one site at a time. Load
+`build/bridge-extension/` unpacked from `chrome://extensions`: `npm run build`
+writes it with your gate's origin (`GATE_URL`) filled in.
 
 ```
 gate: fetch() fails with a CORS error (GET/HEAD only), after policy and secrets
@@ -438,12 +438,14 @@ warmed up and waiting at a shell prompt, with a starter project in
 
 | Playground | What's in it | Snapshot | Page load → running (headless Chromium) |
 |---|---|---|---|
-| `python-3.12` | Python 3.12.16, pip | 17 MB, 256 MiB RAM | 3.8 s |
-| `node-24` | Node.js 24.22.1, npm 11 | 25 MB, 512 MiB RAM | 4.0 s |
-| `node-24-python-3.12` | both | 22 MB, 512 MiB RAM | 2.7 s |
+| `python-3.12` | Python 3.12.16, pip | 9.5 MB, 256 MiB RAM | 2.2 s |
+| `node-24` | Node.js 24.22.1, npm 11 | 9.5 MB, 512 MiB RAM | 2.3 s |
+| `node-24-python-3.12` | both | 9.6 MB, 512 MiB RAM | 2.7 s |
+| `svelte-vite` | Svelte 5, Vite 7's dev server running, preview open | 43 MB, 768 MiB RAM | app shown at 17 s |
+| `sveltekit` | SvelteKit 2 (SSR, API routes), dev server running, preview open | 47 MB, 768 MiB RAM | page rendered at 3 s, interactive at 12 s |
 
 ```
-npm run playgrounds                  # build them all into build/playgrounds/ (about 2 min each)
+npm run playgrounds                  # build them all into build/playgrounds/ (1 min each; 3–6 min with a dev server)
 npm run playgrounds -- python-3.12   # or one
 npm run build                        # ships the ones that match this build's emulator and kernel
 ```
@@ -455,11 +457,71 @@ Alpine's static `apk` for the host, the packages' install scripts run inside
 the VM, then the warm-up, then `save_state()`. All playgrounds share one
 content-addressed blob pool, so a package two of them use is stored once.
 
+A playground can start a dev server before its snapshot (`"server"` in its
+manifest). The builder waits for the port, then crawls it the way a browser
+would: the page, then every module the served code imports. The dev server's
+slow first pass (Vite took 100 s to start and 156 s for SvelteKit's first
+server render, on the emulated CPU) happens at build time, and the snapshot
+has the results. Before saving, the builder drops unused caches and zeroes
+free RAM, so a snapshot holds only memory in use.
+
+The web framework playgrounds run on Vite 7, not 8: Vite 8's bundler
+(rolldown) and lightningcss have no 32-bit Linux builds. Rollup has none either,
+so the templates swap in its WebAssembly build
+(`"overrides": { "rollup": "npm:@rollup/wasm-node" }`). npm packages are
+installed on the host for the guest's platform (`npm ci --cpu=ia32 --libc=musl`),
+not in the emulator.
+
 When the browser restores one, the agent's `refresh` gives it this tab's clock,
 fresh randomness and the tab's CA (every copy of a snapshot starts identical).
 A snapshot only restores on the emulator and kernel it was built with, so the
 site build skips stale ones (rebuild them) and CI rebuilds them when anything
 that goes into them changes. 32-bit only for now (see "64-bit").
+
+## Previews: servers in the VM
+
+A server listening on `0.0.0.0` in the guest opens in the browser. In VS Code,
+use *Linux VM: Preview a Port…*, or the notice that appears when a new port
+starts listening; it opens in the Simple Browser. In `lite/`, use the
+*preview :port* buttons. Playgrounds with a dev server open their preview
+by themselves.
+
+```
+preview frame, origin 5173-<tab>.preview.<host>          IDE page (top)              runtime worker
+  page ── fetch ─► service worker ── HTTP request ─┐
+                                                    ├─ MessagePort (asked for with
+  client.js ── WebSocket ─► raw TCP over the VM ────┘   postMessage to the top page) ─► PreviewGateway(5173)
+                                                                                         └► v86 connect(5173)
+                                                                                            → guest TCP
+```
+
+- **Each port gets its own origin**, `<port>-<tab>.preview.<host>`, separate
+  from the IDE's, so a previewed app can't reach the IDE page, the runtime's
+  BroadcastChannel or the gate. Its connection
+  (`runtime/src/preview.ts`) reaches that one guest port and nothing else.
+- **A service worker** (`web/__vm_preview__/sw.ts`) answers every request on
+  that origin by making the same HTTP request to the guest, over v86's fake
+  TCP stack. The guest sees it come from 192.168.86.1 with `Host: localhost`, so
+  dev servers' host checks pass.
+- **WebSockets** can't be intercepted by a service worker. A script injected
+  into each HTML page (`client.ts`) replaces `WebSocket` for that origin with
+  one that runs the WebSocket protocol over a raw TCP connection into the VM.
+  That's what hot reload uses.
+- **The app's network stays in the VM.** Preview pages get the CSP
+  `connect-src 'self'` (and `default-src 'self' …`), so they reach their own
+  server and nothing else. Code in the VM still reaches the internet only
+  through the gate. Images and scripts from CDNs don't load in a preview.
+- **File watching polls.** The 9p root delivers no inotify events (uncached 9p
+  doesn't share inodes between lookups, so a watch never sees a change). Dev
+  servers must poll: the templates set `server.watch.usePolling` for Vite.
+  Polling also notices files saved from the editor, which bypass the guest
+  kernel. Other tools: `nodemon -L`, `CHOKIDAR_USEPOLLING=1`, webpack
+  `watchOptions.poll`.
+
+Locally, previews use `*.preview.localhost` on the same port (browsers resolve
+`*.localhost` to your machine). Deployed, set `PREVIEW_URL` (see "Deploying").
+Previews only work inside the page that runs the VM: the frame gets its
+connection from that page.
 
 ## The runtime and its frontends
 
@@ -571,6 +633,7 @@ npm run dev        # full build, then rebuild on change and serve on :8080/:8081
 npm run typecheck  # tsc over runtime/, extension/, web/, scripts/ and mcp/ (also run in CI)
 npm run test:runtime   # the runtime through its protocol, under Node (needs a build)
 npm run test:mcp       # the MCP server, as an MCP client sees it (needs a build)
+npm run test:e2e       # the built site in headless Chromium (npx playwright install chromium first)
 ```
 
 After a change, reload the page (*Developer: Reload Window* reloads the
@@ -621,6 +684,18 @@ desolate, `npm run build:desolate` does this from `DESOLATE_EXTERNAL_8080_URL`
 and `DESOLATE_EXTERNAL_8081_URL`. Gate settings and secrets are stored per
 origin, so a new gate origin starts with fresh ones.
 
+For **previews** of servers in the VM, point a wildcard name at the same files,
+served at its root, and pass it with `{id}` for the first label:
+
+```
+PREVIEW_URL=https://{id}.preview.example.com/ npm run build
+```
+
+`{id}` becomes `<port>-<tab>`, one origin per port and tab, so this needs
+wildcard DNS and a wildcard TLS certificate for `*.preview.example.com`.
+GitHub Pages can't do that; without `PREVIEW_URL`, previews work only on
+localhost.
+
 For **webviews**, point a wildcard name at the same files (for example
 `*.webview.example.com` with a wildcard TLS certificate) and set `WEBVIEW_HOST`
 in `web/boot.ts`. If it's left `null` on a non-localhost host, webviews load
@@ -635,9 +710,10 @@ runtime dependency.
 - **Network is HTTP(S) to CORS-enabled sites only** (see Networking), plus
   sites approved in the optional bridge extension. For full
   TCP you'd need a relay: v86 supports Wisp and WebSocket relays.
-- **No preview of servers in the VM from the browser yet.** The building block
-  exists: `emulator.network_adapter.connect(port)` opens a TCP connection *into*
-  the guest, which a service worker could use.
+- **Previews need a wildcard origin** when deployed (`PREVIEW_URL`), and
+  load only from their own server (no CDNs). Streaming responses (server-sent
+  events) arrive only when they end: each request is one connection read to
+  the end.
 - **Speed.** Emulated x86 runs at a fraction of native speed: fine for shells,
   git and scripts, slow for heavy compiles. The editor itself runs natively.
 - **32-bit by default.** `VM_ARCH=x86_64` switches to the experimental 64-bit

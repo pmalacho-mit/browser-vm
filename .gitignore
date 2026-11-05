@@ -2,3 +2,4 @@ node_modules/
 dist/
 build/
 build-state-*.bin.zst
+.DS_Store

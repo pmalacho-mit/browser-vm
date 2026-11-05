@@ -104,6 +104,10 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("linuxVm.newTerminal", () => terminals.open()),
     vscode.commands.registerCommand("linuxVm.showLog", () => log.show()),
     vscode.commands.registerCommand("linuxVm.openPlayground", () => pickPlayground(assetBase, pageUrl, playgroundId)),
+    vscode.commands.registerCommand("linuxVm.preview", async (port?: number) => {
+      port ??= await pickPort(runtime);
+      if (port) openPreview(port);
+    }),
     vscode.commands.registerCommand("linuxVm.manageGate", () => showGate("Secrets and network access for this VM. Settings open in a separate window.")),
     vscode.commands.registerCommand("linuxVm.reboot", async () => {
       const ok = await vscode.window.showWarningMessage("Reboot the VM? All changes to its filesystem are lost.", { modal: true }, "Reboot");
@@ -163,7 +167,53 @@ export function activate(context: vscode.ExtensionContext) {
     }
     await runtime.api.whenReady();
     if (cfg.get("openTerminalOnStartup", true) && vscode.window.terminals.length === 0) terminals.open();
+    // A playground with a dev server already running: show it.
+    const server = result.playground?.server;
+    if (server) openPreview(server.port);
+    watchPorts(runtime, server ? [server.port] : []);
   })();
+
+  // ---- previews of servers in the VM ----------------------------------------------
+  //
+  // A server listening on 0.0.0.0 in the guest opens in the Simple Browser, on an
+  // origin of its own (web/__vm_preview__/, web/runtime-host.ts).
+
+  function openPreview(port: number) {
+    const template = cfg.get<string>("previewUrl", "");
+    if (!template) {
+      vscode.window.showInformationMessage("This site has no preview origin for servers in the VM (see PREVIEW_URL in the README).");
+      return;
+    }
+    vscode.commands.executeCommand("simpleBrowser.api.open", vscode.Uri.parse(template.replace("{port}", String(port))), {
+      viewColumn: vscode.ViewColumn.Beside, preserveFocus: true,
+    });
+  }
+
+  /** Offers a preview when a new port starts listening. */
+  async function watchPorts(rt: Client<Runtime>, known: number[]) {
+    const seen = new Set(known);
+    for (;;) {
+      await new Promise((r) => setTimeout(r, 3000));
+      const ports = await rt.api.ports().catch(() => [] as number[]);
+      for (const port of ports) {
+        if (seen.has(port)) continue;
+        seen.add(port);
+        vscode.window.showInformationMessage(`A server in the VM is listening on port ${port}.`, "Open Preview")
+          .then((pick) => pick && openPreview(port));
+      }
+    }
+  }
+}
+
+/** Asks which listening port to preview. */
+async function pickPort(rt: Client<Runtime>): Promise<number | undefined> {
+  const ports = await rt.api.ports().catch(() => [] as number[]);
+  if (!ports.length) {
+    const typed = await vscode.window.showInputBox({ title: "Preview a port", prompt: "Nothing is listening yet. Port to preview:", validateInput: (v) => /^\d{1,5}$/.test(v) ? undefined : "a port number" });
+    return typed ? Number(typed) : undefined;
+  }
+  const pick = await vscode.window.showQuickPick(ports.map((p) => ({ label: String(p), description: `http://0.0.0.0:${p}` })), { title: "Preview a port of the VM" });
+  return pick ? Number(pick.label) : undefined;
 }
 
 async function fetchJSON<T>(url: string): Promise<T | undefined> {

@@ -292,6 +292,14 @@ shipped in `dist/`. Each is built from:
   `manifest.json`; licenses per package, as for the default image);
 - this project's `guest/vm-init`, `guest/vm-agent`, `guest/overlay/` and the
   playground's `template/`;
+- for playgrounds with `"npm": true` (`svelte-vite`, `sveltekit`), the npm
+  packages in the template's `package-lock.json` (pinned by version and
+  checksum), installed from registry.npmjs.org into `/root/project/node_modules`.
+  These include Svelte, SvelteKit, Vite, `@rollup/wasm-node` and esbuild's
+  `@esbuild/linux-ia32` binary, all MIT-licensed, and their dependencies under
+  their own licenses;
+- for playgrounds with a `"server"`, the dev server's state in RAM and its
+  caches on disk (`node_modules/.vite`, `.svelte-kit`);
 - a snapshot of that system after boot and warm-up (`state.bin.zst`), which
   contains the guest's RAM: the kernel above and the agent from
   `guest/prebuilt/agent/`.
@@ -319,7 +327,9 @@ are part of every deployment.
 | Package | Version | License | What ends up in `dist/` |
 |---|---|---|---|
 | [`vscode-web`](https://github.com/Felx-B/vscode-web) | 1.91.1 | MIT | `dist/vscode/`: a prebuilt **Code - OSS 1.91.1** web workbench. This is an unofficial community package (author "Felix B"), not published by Microsoft. It includes Code-OSS's own bundled dependencies (`@xterm/*`, `vscode-oniguruma`, `vscode-textmate`, `jschardet`, `js-base64`, `tas-client-umd`, `@vscode/*`, `@microsoft/*`) and built-in extensions, each under its own license. `scripts/build-site.mjs` **modifies** one file in it: `out/vs/workbench/services/extensions/worker/webWorkerExtensionHostIframe.html` (narrower CSP, blob-started worker). |
-| [`v86`](https://github.com/copy/v86) | 0.5.472 | BSD-2-Clause | `v86.wasm` and `v86-fallback.wasm` copied into `dist/extensions/linux-vm/vm/`; its JavaScript is bundled into `dist/extensions/linux-vm/dist/extension.js` |
+| [`v86`](https://github.com/copy/v86) | 0.5.472 | BSD-2-Clause | `v86.wasm` and `v86-fallback.wasm` copied into `dist/extensions/linux-vm/vm/`; its JavaScript is bundled into `dist/runtime/worker.js` |
+| [`@xterm/xterm`](https://github.com/xtermjs/xterm.js), `@xterm/addon-fit` | 5.5.0, 0.10.0 | MIT | Bundled into `dist/lite/lite.js` and `lite.css` (the lightweight frontend) |
+| [`codemirror`](https://codemirror.net/) and `@codemirror/*` (view, state, language packs, `theme-one-dark`), with their `@lezer/*` parsers | 6.x | MIT | Bundled into `dist/lite/lite.js` |
 | [`esbuild`](https://github.com/evanw/esbuild) | 0.25.12 | MIT | Nothing. Build tool only |
 | [`typescript`](https://github.com/microsoft/TypeScript), [`@types/vscode`](https://www.npmjs.com/package/@types/vscode) 1.91.0, [`@types/node`](https://www.npmjs.com/package/@types/node) | dev only | Apache-2.0 / MIT / MIT | Nothing. Type checking only (`npm run typecheck`) |
 

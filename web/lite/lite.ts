@@ -161,6 +161,52 @@ rt.on("fs", (changes: FsChange[]) => {
   }, 300);
 });
 
+// ---- previews ----------------------------------------------------------------------
+//
+// A server in the VM (listening on 0.0.0.0) opens in an iframe on its own origin
+// (web/__vm_preview__/); see web/runtime-host.ts.
+
+function openPreview(port: number) {
+  if (!window.__vmPreviewUrl) return term.write(`\r\n\x1b[33mThis site has no preview origin (PREVIEW_URL).\x1b[0m\r\n`);
+  $("preview").hidden = false;
+  document.querySelector("main")!.classList.add("previewing");
+  $("preview-title").textContent = `port ${port}`;
+  ($("preview-frame") as HTMLIFrameElement).src = window.__vmPreviewUrl.replace("{port}", String(port));
+  requestAnimationFrame(() => fit.fit());
+}
+$("preview-close").onclick = () => {
+  $("preview").hidden = true;
+  ($("preview-frame") as HTMLIFrameElement).src = "about:blank";
+  document.querySelector("main")!.classList.remove("previewing");
+  requestAnimationFrame(() => fit.fit());
+};
+$("preview-reload").onclick = () => {
+  const f = $("preview-frame") as HTMLIFrameElement;
+  try { f.contentWindow?.location.reload(); } catch { f.src = f.src; }
+};
+
+/** Shows a button per listening port; polls while the page is visible. */
+async function watchPorts() {
+  let shown = "";
+  for (;;) {
+    if (!document.hidden) {
+      const ports = await rt.api.ports().catch(() => [] as number[]);
+      const key = ports.join(",");
+      if (key !== shown) {
+        shown = key;
+        $("ports").replaceChildren(...ports.map((p) => {
+          const b = document.createElement("button");
+          b.textContent = `preview :${p}`;
+          b.title = `Open a preview of the server on port ${p}`;
+          b.onclick = () => openPreview(p);
+          return b;
+        }));
+      }
+    }
+    await new Promise((r) => setTimeout(r, 3000));
+  }
+}
+
 // ---- start -----------------------------------------------------------------------
 
 (async () => {
@@ -180,4 +226,8 @@ rt.on("fs", (changes: FsChange[]) => {
   const t = await rt.api.openTerminal({ rows: term.rows, cols: term.cols });
   termId = t.id;
   term.focus();
+  await rt.api.whenReady();
+  // A playground with a dev server: show it right away.
+  if (result.playground?.server) openPreview(result.playground.server.port);
+  watchPorts();
 })().catch((e) => term.write(`\r\n\x1b[31m${(e as Error).message}\x1b[0m\r\n`));

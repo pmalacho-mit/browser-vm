@@ -74,6 +74,37 @@ type MutatingMethod = "CreateFile" | "CreateDirectory" | "CreateSymlink" | "Crea
 
 const DEFAULT_SKIP = new Set([".git", "node_modules"]);
 
+/**
+ * A glob (as in VS Code's search.exclude: "**\/node_modules", "src/*.{js,ts}")
+ * as a RegExp over paths relative to the searched folder.
+ */
+export function globToRegExp(glob: string): RegExp {
+  let re = "", i = 0, braces = 0;
+  const g = glob.replace(/^\.?\//, "");
+  while (i < g.length) {
+    const c = g[i];
+    if (g.startsWith("**/", i)) { re += "(?:.*/)?"; i += 3; continue; }
+    if (g.startsWith("**", i)) { re += ".*"; i += 2; continue; }
+    if (c === "*") re += "[^/]*";
+    else if (c === "?") re += "[^/]";
+    else if (c === "{") { re += "(?:"; braces++; }
+    else if (c === "}" && braces) { re += ")"; braces--; }
+    else if (c === "," && braces) re += "|";
+    else if (c === "[") { const end = g.indexOf("]", i); if (end > i) { re += g.slice(i, end + 1).replace(/^\[!/, "[^"); i = end + 1; continue; } re += "\\["; }
+    else re += c.replace(/[.+^${}()|\]\\]/g, "\\$&");
+    i++;
+  }
+  return new RegExp(`^${re}$`);
+}
+
+/** Which paths a search looks at: globs relative to its folder. */
+export interface SearchScope {
+  /** Only files matching one of these (none: all files). */
+  includes?: string[];
+  /** Not files or folders matching any of these (none given: .git and node_modules). */
+  excludes?: string[];
+}
+
 export class VmFs {
   fs!: V86Filesystem;
   fsReady: Promise<V86Filesystem>;
@@ -241,31 +272,41 @@ export class VmFs {
 
   // ---- search ------------------------------------------------------------
 
-  /** Depth-first walk over regular files. Yields [path, id, inode]. */
-  *walk(path: string, skip: Set<string> = DEFAULT_SKIP): Generator<[string, number, V86Inode]> {
+  /**
+   * Depth-first walk over regular files. Yields [path, id, inode]. Excluded
+   * folders are never entered, so their files are never read (or downloaded).
+   */
+  *walk(path: string, scope: SearchScope = {}): Generator<[string, number, V86Inode]> {
     const r = this.lookup(path);
     if (r.id === -1) return;
-    const stack: [string, number][] = [[path.replace(/\/$/, ""), r.id]];
+    const root = path.replace(/\/$/, "");
+    const excludes = scope.excludes?.length ? scope.excludes.map(globToRegExp) : null;
+    const includes = scope.includes?.length ? scope.includes.map(globToRegExp) : null;
+    const excluded = (rel: string, name: string) => excludes ? excludes.some((re) => re.test(rel)) : DEFAULT_SKIP.has(name);
+    const stack: [string, number][] = [[root, r.id]];
     while (stack.length) {
       const [p, id] = stack.pop()!;
       const inode = this.fs.GetInode(id);
       if (isDir(inode)) {
         for (const [name, cid] of inode.direntries) {
-          if (name === "." || name === ".." || skip.has(name)) continue;
-          stack.push([`${p}/${name}`, cid]);
+          if (name === "." || name === "..") continue;
+          const child = `${p}/${name}`;
+          if (excluded(child.slice(root.length + 1), name)) continue;
+          stack.push([child, cid]);
         }
       } else if (isFile(inode)) {
+        if (includes && !includes.some((re) => re.test(p.slice(root.length + 1)))) continue;
         yield [p, id, inode];
       }
     }
   }
 
   /** File paths under `folder` whose path contains `pattern`'s characters in order (case-insensitive). */
-  async searchFiles(folder: string, pattern: string, maxResults = 1000): Promise<string[]> {
+  async searchFiles(folder: string, pattern: string, maxResults = 1000, scope: SearchScope = {}): Promise<string[]> {
     await this.fsReady;
     const needle = pattern.toLowerCase().replace(/\s+/g, "");
     const out: string[] = [];
-    for (const [path] of this.walk(folder)) {
+    for (const [path] of this.walk(folder, scope)) {
       if (out.length >= maxResults) break;
       // cheap subsequence filter; editors do their own fuzzy scoring
       if (needle && !isSubsequence(needle, path.toLowerCase())) continue;
@@ -275,14 +316,14 @@ export class VmFs {
   }
 
   /** Lines matching `query` in text files under `folder`. Skips binaries and files over maxFileSize. */
-  async searchText(folder: string, query: TextQuery, { maxResults = 10_000, maxFileSize = 2 << 20 } = {}): Promise<{ matches: TextMatch[]; limitHit: boolean }> {
+  async searchText(folder: string, query: TextQuery, { maxResults = 10_000, maxFileSize = 2 << 20, ...scope }: { maxResults?: number; maxFileSize?: number } & SearchScope = {}): Promise<{ matches: TextMatch[]; limitHit: boolean }> {
     await this.fsReady;
     let source = query.isRegExp ? query.pattern : query.pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     if (query.isWordMatch) source = `\\b${source}\\b`;
     const re = new RegExp(source, query.isCaseSensitive ? "g" : "gi");
     const decoder = new TextDecoder();
     const matches: TextMatch[] = [];
-    for (const [path, id, inode] of this.walk(folder)) {
+    for (const [path, id, inode] of this.walk(folder, scope)) {
       if (inode.size > maxFileSize) continue;
       const bytes = await this.fs.Read(id, 0, inode.size);
       if (!bytes || bytes.includes(0)) continue; // skip binaries

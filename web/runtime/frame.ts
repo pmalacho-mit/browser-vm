@@ -10,4 +10,9 @@ if (channel) {
   const blob = new Blob([`importScripts(${JSON.stringify(script)});`], { type: "text/javascript" });
   const worker = new Worker(URL.createObjectURL(blob), { name: "vm-runtime" });
   worker.postMessage({ channel });
+  // From the host page only: a MessagePort for a preview of one guest port.
+  addEventListener("message", (e: MessageEvent<{ preview?: number }>) => {
+    if (e.source !== parent || e.origin !== location.origin || typeof e.data?.preview !== "number" || !e.ports[0]) return;
+    worker.postMessage({ preview: e.data.preview }, [e.ports[0]]);
+  });
 }

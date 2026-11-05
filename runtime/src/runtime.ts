@@ -13,9 +13,11 @@
 // "refused" { host }, "booted" BootResult.
 import type { GateNotice } from "../../types/gate-protocol.ts";
 import { LinuxVM, CONSOLE_PORTS, type VmState } from "./vm.ts";
-import { VmFs, type DirEntry, type FsChange, type TextMatch, type TextQuery, type VmStat } from "./vmfs.ts";
+import { VmFs, type DirEntry, type FsChange, type SearchScope, type TextMatch, type TextQuery, type VmStat } from "./vmfs.ts";
 import type { AgentReply, AgentRequest, ExecResult } from "./agent-client.ts";
 import type { FetchLike } from "./net.ts";
+import { PreviewGateway } from "./preview.ts";
+import { portEndpoint, serve } from "./rpc.ts";
 
 export interface BootOptions {
   /** URL of the VM assets (dist/extensions/linux-vm/vm). */
@@ -33,7 +35,11 @@ export interface BootOptions {
 /** What boot() did. */
 export interface BootResult {
   /** The playground restored, if any (an unknown id boots the default image instead). */
-  playground?: { id: string; title: string; open: string[] };
+  playground?: {
+    id: string; title: string; open: string[];
+    /** A server the snapshot has running (a dev server), to open a preview of. */
+    server?: { port: number; log: string };
+  };
   /** Set when a playground was asked for but this site doesn't have it. */
   missingPlayground?: string;
 }
@@ -50,6 +56,7 @@ interface PlaygroundManifest {
   memoryMB: number;
   state: string;
   open?: string[];
+  server?: { port: number; log: string };
 }
 
 export class Runtime {
@@ -92,7 +99,7 @@ export class Runtime {
       if (m?.state) {
         snapshot = { url: `${base}/${m.state}` };
         memoryMB = m.memoryMB; // a snapshot restores only with the memory it was taken with
-        result.playground = { id: o.playground, title: m.title, open: m.open ?? [] };
+        result.playground = { id: o.playground, title: m.title, open: m.open ?? [], ...(m.server && { server: m.server }) };
       } else {
         result.missingPlayground = o.playground;
       }
@@ -148,8 +155,8 @@ export class Runtime {
   async mkdir(path: string) { return (await this.started()).vfs.mkdir(path); }
   async remove(path: string, o?: { recursive?: boolean }) { return (await this.started()).vfs.remove(path, o); }
   async rename(from: string, to: string, o?: { overwrite?: boolean }) { return (await this.started()).vfs.rename(from, to, o); }
-  async searchFiles(folder: string, pattern: string, maxResults?: number): Promise<string[]> { return (await this.started()).vfs.searchFiles(folder, pattern, maxResults); }
-  async searchText(folder: string, query: TextQuery, o?: { maxResults?: number; maxFileSize?: number }): Promise<{ matches: TextMatch[]; limitHit: boolean }> {
+  async searchFiles(folder: string, pattern: string, maxResults?: number, scope?: SearchScope): Promise<string[]> { return (await this.started()).vfs.searchFiles(folder, pattern, maxResults, scope); }
+  async searchText(folder: string, query: TextQuery, o?: { maxResults?: number; maxFileSize?: number } & SearchScope): Promise<{ matches: TextMatch[]; limitHit: boolean }> {
     return (await this.started()).vfs.searchText(folder, query, o);
   }
 
@@ -217,6 +224,19 @@ export class Runtime {
   }
 
   async agent(req: AgentRequest): Promise<AgentReply> { return (await this.started()).vm.rpc(req); }
+
+  // ---- previews ------------------------------------------------------------------
+
+  /**
+   * Serves a PreviewGateway for the guest's `port` on `endpoint` (a MessagePort
+   * the host page made for a preview origin; see web/runtime-host.ts). Not
+   * callable over the protocol (leading "_"): only the worker's owner can.
+   */
+  async _preview(port: number, endpoint: MessagePort) {
+    const { vm } = await this.started();
+    const gw = new PreviewGateway(vm, port);
+    gw.emit = serve(portEndpoint(endpoint), gw);
+  }
 
   // ---- the network gate --------------------------------------------------------
 

@@ -22,3 +22,5 @@ matches the site's emulator and kernel. See `scripts/build-playgrounds.mjs`.
 | `warmup` | Shell commands run in `/root/project` before the snapshot is taken, e.g. to load a runtime once so its files are cached. They may use the network (unrestricted at build time). |
 | `memoryMB` | Guest RAM. Restore time and snapshot size grow with it. |
 | `open` | Files to open in the editor after the restore. |
+| `npm` | `true`: run `npm ci` for the template (it needs a `package-lock.json`) on the build host, for the guest's platform (`--os=linux --cpu=ia32 --libc=musl`), with install scripts skipped. Much faster than npm in the emulator. |
+| `server` | A dev server to have running in the snapshot: `{ "command": "npm run dev", "port": 5173, "warm": ["/"] }`. The builder starts it (output in `/var/log/dev-server.log`), waits for the port, then fetches `warm` and every module the served code imports, so the server has done its first transforms. Frontends open a preview of the port after the restore. It must listen on `0.0.0.0` and poll for file changes (see "Previews" in the top-level README). |

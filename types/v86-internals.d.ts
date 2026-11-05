@@ -3,12 +3,21 @@
 //   emulator.fs9p - the 9p filesystem object (lib/filesystem.js in v86)
 //   emulator.bus  - the event bus; "tcp-connection" fires for each guest TCP
 //                   connection on the fake network (src/browser/fake_network.js)
+//   emulator.network_adapter - the fake network; connect(port) opens a TCP
+//                   connection into the guest (fake_network.js, fake_tcp_connect)
 import "v86";
 
 declare module "v86" {
   interface V86 {
     fs9p: V86Filesystem;
     bus: V86Bus;
+    /** Set when the emulator has a NIC with a relay ("fetch" here). */
+    network_adapter?: V86NetworkAdapter;
+  }
+
+  export interface V86NetworkAdapter {
+    /** Opens a TCP connection from the fake router (192.168.86.1) to the guest's `port`. */
+    connect(port: number): V86TcpConnection;
   }
 
   /** One inode of the 9p filesystem. `mode` holds the file type bits (S_IFDIR, …). */
@@ -81,7 +90,9 @@ declare module "v86" {
     accept(packet?: unknown): void;
     write(data: Uint8Array): void;
     close(): void;
+    /** One listener per event: a later on() replaces the earlier one. */
     on(event: "data", listener: (data: Uint8Array) => void): void;
-    on(event: "shutdown" | "close", listener: () => void): void;
+    /** "connect": our connect() was answered. "shutdown": the guest sent FIN. "close": reset or closed. */
+    on(event: "connect" | "shutdown" | "close", listener: () => void): void;
   }
 }
