@@ -1,7 +1,7 @@
 // A minimal static file server for a built app, for local use. Nothing
 // VM-specific happens here: deployed, each folder goes to any static host.
 //
-//   node tools/serve.mjs dist/<app> [port=8080] [--gate-port=8081]
+//   node tools/serve.mjs dist/<app> [port=8080] [--gate-port=8081] [--preview-ports=8082,8083,8084,8085]
 //
 // One port serves all three origins of the app, by host name, the way they're
 // laid out deployed:
@@ -9,8 +9,10 @@
 //   gate.localhost        → dist/<app>/gate/
 //   *.preview.localhost   → dist/<app>/preview/
 //   anything else         → site/ (e.g. VS Code's webview origins, <uuid>.localhost)
-// --gate-port serves gate/ alone on a second port, for port forwarders that
-// route one exact host name per port (see build:desolate in package.json).
+// --gate-port serves gate/ alone on a second port, and --preview-ports serves
+// preview/ alone on each of a list of ports: for port forwarders that route one
+// exact host name per port (see build:desolate in package.json). A port that's
+// already taken is skipped with a warning.
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
@@ -20,6 +22,7 @@ const positional = args.filter((a) => !a.startsWith("--"));
 const app = path.resolve(positional[0] || "dist/ide");
 const port = Number(positional[1] || process.env.PORT || 8080);
 const gatePort = Number(args.find((a) => a.startsWith("--gate-port="))?.split("=")[1] || 0);
+const previewPorts = (args.find((a) => a.startsWith("--preview-ports="))?.split("=")[1] ?? "").split(",").filter(Boolean).map(Number);
 if (!fs.existsSync(path.join(app, "site"))) { console.error(`${app}: no site/ folder (build the app first: npm run build)`); process.exit(1); }
 
 const types = {
@@ -62,4 +65,10 @@ const handler = (pick) => (/** @type {http.IncomingMessage} */ req, /** @type {h
 http.createServer(handler((req) => folderFor(req.headers.host ?? ""))).listen(port, () => {
   console.log(`serving ${path.relative(process.cwd(), app) || app} at http://localhost:${port}/  (gate: http://gate.localhost:${port}/, previews: *.preview.localhost:${port})`);
 });
-if (gatePort) http.createServer(handler(() => "gate")).listen(gatePort, () => console.log(`  and the gate alone at http://localhost:${gatePort}/`));
+/** An extra port that serves one folder; a port already in use is skipped, not fatal. */
+const extra = (/** @type {number} */ p, /** @type {"gate" | "preview"} */ folder) => http.createServer(handler(() => folder))
+  .on("error", (/** @type {NodeJS.ErrnoException} */ e) => console.warn(`  port ${p} (${folder}): ${e.code === "EADDRINUSE" ? "already in use, skipped" : e.message}`))
+  .listen(p);
+if (gatePort) { extra(gatePort, "gate"); console.log(`  the gate alone on :${gatePort}`); }
+for (const p of previewPorts) extra(p, "preview");
+if (previewPorts.length) console.log(`  previews alone on :${previewPorts.join(", :")}`);

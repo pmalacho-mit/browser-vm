@@ -24,12 +24,17 @@
   // The IDE must be opened at http://localhost:<port>: webviews use
   // <hash>.localhost and the network gate uses gate.localhost, both of which
   // browsers resolve to loopback, so one forwarded port serves all three.
-  "forwardPorts": [8080, 8081],
+  "forwardPorts": [8080, 8081, 8082, 8083, 8084, 8085],
   "portsAttributes": {
     "8080": { "label": "IDE (open via localhost, not 127.0.0.1)", "onAutoForward": "notify" },
     // Same files, second origin: the network gate when the forwarder routes one
     // exact hostname per port (desolate). See IDE_URL/GATE_URL in tools/lib/app.mjs.
-    "8081": { "label": "Network gate", "onAutoForward": "silent" }
+    "8081": { "label": "Network gate", "onAutoForward": "silent" },
+    // Previews, one origin per port, under such a forwarder (PREVIEW_ORIGINS; npm run build:desolate).
+    "8082": { "label": "Preview 1", "onAutoForward": "silent" },
+    "8083": { "label": "Preview 2", "onAutoForward": "silent" },
+    "8084": { "label": "Preview 3", "onAutoForward": "silent" },
+    "8085": { "label": "Preview 4", "onAutoForward": "silent" }
   },
 
   "postCreateCommand": "bash .devcontainer/post-create.sh",
@@ -82,7 +87,7 @@
     // For desolate (isolated-devcontainers-suede): forwarded port, and enough
     // memory for kernel builds plus a running VM.
     "desolate": {
-      "ports": [8080, 8081],
+      "ports": [8080, 8081, 8082, 8083, 8084, 8085],
       "memory": "8g"
     }
   }

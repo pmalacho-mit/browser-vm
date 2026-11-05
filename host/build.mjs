@@ -4,6 +4,7 @@
 //   src/runtime-host.ts               → site/host/runtime-host.js
 //   preview/{boot,client}.ts          → preview/__vm_preview__/{boot,client}.js + index.html
 //   preview/sw.ts                     → preview/__vm_preview_sw.js (at the root: its scope is the whole origin)
+//   preview/open.ts, open.html        → site/host/preview-open.{js,html}  (opens a preview on a fixed origin, PREVIEW_ORIGINS)
 //
 // The worker bundles the runtime with the app's machine: `import { V86 } from "v86"`
 // resolves to that machine's emulator, and __VM_MACHINE__ says what it is.
@@ -48,6 +49,9 @@ export default function hostPart() {
           outdir: ctx.out.preview,
           format: "iife",
         },
+      }, {
+        name: "preview opener",
+        options: { ...ctx.common, entryPoints: { "preview-open": path.join(here, "preview/open.ts") }, outdir: path.join(ctx.out.site, "host"), format: "iife" },
       }] : []),
     ]),
     assemble(ctx) {
@@ -56,6 +60,7 @@ export default function hostPart() {
       if (ctx.app.previews) {
         fs.mkdirSync(path.join(ctx.out.preview, "__vm_preview__"), { recursive: true });
         fs.copyFileSync(path.join(here, "preview/index.html"), path.join(ctx.out.preview, "__vm_preview__/index.html"));
+        fs.copyFileSync(path.join(here, "preview/open.html"), path.join(ctx.out.site, "host/preview-open.html"));
       }
     },
     watch: [path.join(here, "runtime-frame"), path.join(here, "preview")],

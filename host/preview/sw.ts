@@ -27,7 +27,8 @@ interface Scope {
 const sw = self as unknown as Scope;
 
 const OWN = "/__vm_preview__/";
-const guestPort = Number(location.hostname.split(".")[0].split("-")[0]);
+/** The guest port this origin shows: sent with each connection (for the "nothing is listening" page). */
+let guestPort = 0;
 /** Applied to every page: the app may load and connect to this origin only (its server in the VM). */
 const CSP = "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; connect-src 'self'; frame-ancestors *";
 
@@ -38,6 +39,7 @@ sw.addEventListener("install", () => { sw.skipWaiting(); });
 sw.addEventListener("activate", (e) => e.waitUntil(sw.clients.claim()));
 sw.addEventListener("message", (e) => {
   if (e.data?.vmPreview !== "port" || !e.ports[0]) return; // (pings only keep the worker alive)
+  if (Number(e.data.guestPort) > 0) guestPort = Number(e.data.guestPort);
   gateway = connect<PreviewGateway>(portEndpoint(e.ports[0]));
   for (const w of gatewayWaiters.splice(0)) w(gateway);
   e.ports[1]?.postMessage("ok");

@@ -47,8 +47,9 @@ console.log(`image:    ${rel(vm.base)}\nagent:    ${vm.agent ? rel(vm.agent) : "
 console.log(`playgrounds: ${vm.playgrounds.join(", ") || "none (npm run playgrounds)"}${app.start ? `; starts in ${app.start}` : ""}`);
 console.log(`gate:     ${app.gate === "web" ? `web${o.gate ? ` at ${o.gate} (embedded by ${o.ide})` : ""}` : "none (no network)"}`);
 if (o.preview) console.log(`previews: ${o.preview}`);
+if (o.previewOrigins) console.log(`previews: ${o.previewOrigins.length} fixed origins, ${o.previewOrigins.join(" ")}`);
 console.log(`\n${rel(ctx.out.dist)}/`);
 console.log(`  site/     ${mb(ctx.out.site)}  (vm/ ${mb(path.join(ctx.out.site, "vm"))})  → ${o.ide ?? "the app's origin"}`);
 if (app.gate === "web") console.log(`  gate/     ${mb(ctx.out.gate)}  → ${o.gate ?? "the gate's origin"}`);
-if (app.previews) console.log(`  preview/  ${mb(ctx.out.preview)}  → ${o.preview ?? "*.preview origins"}`);
+if (app.previews) console.log(`  preview/  ${mb(ctx.out.preview)}  → ${o.preview ?? o.previewOrigins?.join(", ") ?? "*.preview origins"}`);
 console.log(`\nserve it locally:  node tools/serve.mjs ${rel(ctx.out.dist)}${name === "ide" ? "   (or npm start)" : ""}`);

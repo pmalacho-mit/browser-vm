@@ -3,7 +3,8 @@
 //
 //   TypeScript (every part's bundles)   → recompiled by esbuild in watch mode
 //   HTML, CSS, manifests (part folders) → the part's assemble() runs again
-//   dist/<app>/ served on :8080 (site, gate.localhost, *.preview.localhost) and :8081 (the gate alone)
+//   dist/<app>/ served on :8080 (site, gate.localhost, *.preview.localhost), :8081 (the gate alone)
+//   and :8082–8085 (previews alone, for PREVIEW_ORIGINS)
 //
 // After a change, reload the page (or run "Developer: Reload Window" in VS Code):
 // the extension host only loads extensions at startup.
@@ -62,7 +63,7 @@ for (const part of parts) {
 }
 
 // 4. Serve.
-const server = spawn(process.execPath, [path.join(repo, "tools/serve.mjs"), ctx.out.dist, "8080", "--gate-port=8081"], { stdio: "inherit" });
+const server = spawn(process.execPath, [path.join(repo, "tools/serve.mjs"), ctx.out.dist, "8080", "--gate-port=8081", "--preview-ports=8082,8083,8084,8085"], { stdio: "inherit" });
 console.log(`\nwatching ${parts.map((p) => p.name).join(", ")} (Ctrl+C to stop). Open http://localhost:8080 (not 127.0.0.1).\n`);
 const stop = () => { server.kill(); process.exit(0); };
 process.on("SIGINT", stop);

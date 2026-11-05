@@ -5,10 +5,11 @@
 // VS Code surface gets the name through the setting linuxVm.runtimeChannel;
 // lite reads it directly.
 //
-// It also connects previews (host/preview/) to the runtime. A preview of
-// guest port P is served on its own origin, P-<tab>.preview.<host>; a page there
-// asks this window (window.top) for a connection, and gets a MessagePort to a
-// gateway for port P alone (runtime/src/preview.ts).
+// It also connects previews (host/preview/) to the runtime. A preview of guest
+// port P is served on an origin of its own: P-<tab>.preview.<host>, or one from
+// a fixed list this page hands out (below). A page there asks this window
+// (window.top) for a connection, and gets a MessagePort to a gateway for port P
+// alone (runtime/src/preview.ts).
 export {}; // a module for type checking; esbuild emits a self-contained classic script
 
 const name = `vm-runtime-${crypto.randomUUID()}`;
@@ -38,12 +39,22 @@ const tab = (() => {
 })();
 
 /**
- * Preview origins, as a template with "{id}" for "<port>-<tab>": PREVIEW_URL at
- * build time (site.js), or locally *.preview.localhost on this port. Every
- * preview origin serves the app's preview folder (dist/<app>/preview/) at its root.
+ * Preview origins, in one of two shapes. Every preview origin serves the app's
+ * preview folder (dist/<app>/preview/) at its root.
+ *
+ * - One origin per guest port and tab, from a template with "{id}" for
+ *   "<port>-<tab>": PREVIEW_URL at build time, or locally *.preview.localhost on
+ *   this port. The origin itself names the guest port.
+ * - A fixed list of origins (PREVIEW_ORIGINS, e.g. extra forwarded ports behind a
+ *   forwarder that answers one exact host name per port). This page assigns
+ *   guest ports to them as previews open: at most that many at once, the oldest
+ *   given up first. Surfaces open host/preview-open.html, which asks this page
+ *   for the origin and goes there. The list is shared by every tab of the app.
  */
+const slots: string[] | undefined = globalThis.SITE_CONFIG?.previews === false ? undefined
+  : globalThis.SITE_CONFIG?.previewOrigins?.map((o) => new URL(o).origin);
 const template = (() => {
-  if (globalThis.SITE_CONFIG?.previews === false) return undefined; // the app has previews off
+  if (globalThis.SITE_CONFIG?.previews === false || slots?.length) return undefined;
   const configured = globalThis.SITE_CONFIG?.previewUrl;
   if (configured) return configured.replace(/\/*$/, "/");
   if (location.hostname === "localhost") return `${location.protocol}//{id}.preview.localhost${location.port ? ":" + location.port : ""}/`;
@@ -51,7 +62,17 @@ const template = (() => {
 })();
 
 /** Where to open a preview, with "{port}" for the guest port (undefined: this site has no preview origin). */
-window.__vmPreviewUrl = template ? `${template.replace("{id}", `{port}-${tab}`)}__vm_preview__/?path=%2F` : undefined;
+window.__vmPreviewUrl = slots?.length
+  ? `${new URL("preview-open.html", here).href}?port={port}`
+  : template ? `${template.replace("{id}", `{port}-${tab}`)}__vm_preview__/?path=%2F` : undefined;
+
+/** Answers a preview page that asks for a connection to `guestPort`. */
+function givePreviewPort(e: MessageEvent<{ nonce?: string }>, guestPort: number) {
+  if (!(guestPort >= 1 && guestPort <= 65535) || !iframe.contentWindow) return;
+  const { port1, port2 } = new MessageChannel();
+  iframe.contentWindow.postMessage({ preview: guestPort }, location.origin, [port1]);
+  (e.source as WindowProxy).postMessage({ vmPreview: "port", nonce: e.data.nonce, guestPort }, e.origin, [port2]);
+}
 
 if (template) {
   // "http://{id}.preview.localhost:8080/" → /^http:\/\/(\d+)-<tab>\.preview\.localhost:8080$/
@@ -61,10 +82,30 @@ if (template) {
   addEventListener("message", (e: MessageEvent<{ vmPreview?: string; nonce?: string }>) => {
     if (e.data?.vmPreview !== "port-request" || !e.source) return;
     const m = e.origin.match(originRe);
-    const port = m ? Number(m[1]) : 0;
-    if (!(port >= 1 && port <= 65535) || !iframe.contentWindow) return;
-    const { port1, port2 } = new MessageChannel();
-    iframe.contentWindow.postMessage({ preview: port }, location.origin, [port1]);
-    (e.source as WindowProxy).postMessage({ vmPreview: "port", nonce: e.data.nonce }, e.origin, [port2]);
+    givePreviewPort(e, m ? Number(m[1]) : 0);
+  });
+}
+
+if (slots?.length) {
+  /** Which guest port each preview origin shows, and when it was last opened. */
+  const assigned = slots.map(() => ({ guestPort: 0, opened: 0 }));
+  addEventListener("message", (e: MessageEvent<{ vmPreview?: string; nonce?: string; port?: number }>) => {
+    if (!e.source) return;
+    // From the opener page (this app's origin): give the guest port an origin.
+    if (e.data?.vmPreview === "slot-request" && e.origin === location.origin) {
+      const guestPort = Number(e.data.port);
+      if (!(guestPort >= 1 && guestPort <= 65535)) return;
+      let i = assigned.findIndex((a) => a.guestPort === guestPort);
+      if (i < 0) i = assigned.findIndex((a) => a.guestPort === 0);
+      if (i < 0) i = assigned.reduce((oldest, a, j) => (a.opened < assigned[oldest].opened ? j : oldest), 0);
+      assigned[i] = { guestPort, opened: Date.now() };
+      (e.source as WindowProxy).postMessage({ vmPreview: "slot", nonce: e.data.nonce, url: `${slots[i]}/__vm_preview__/?path=%2F` }, e.origin);
+      return;
+    }
+    // From a preview origin: connect it to the guest port it was given.
+    if (e.data?.vmPreview === "port-request") {
+      const i = slots.indexOf(e.origin);
+      if (i >= 0) givePreviewPort(e, assigned[i].guestPort);
+    }
   });
 }

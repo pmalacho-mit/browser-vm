@@ -11,6 +11,8 @@ declare global {
     gateUrl?: string;
     /** Preview origins, e.g. "https://{id}.preview.example.com/" (PREVIEW_URL). */
     previewUrl?: string;
+    /** Or a fixed list of preview origins, handed out as previews open (PREVIEW_ORIGINS). */
+    previewOrigins?: string[];
     /** false: the app has no gate, so the VM has no network (app config `gate: "none"`). */
     gate?: false;
     /** false: the app has previews off. */
