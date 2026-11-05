@@ -58,8 +58,8 @@ esbuild only strips types; `npm run typecheck` checks them.
 
 ## Serving locally
 
-`node tools/serve.mjs dist/<app> [port] [--gate-port=N]` serves the three
-folders from one port, by host name, as they're laid out deployed:
+`node tools/serve.mjs dist/<app> [port] [--gate-port=N] [--preview-ports=A,B,…]`
+serves the three folders from one port, by host name, as they're laid out deployed:
 
 | Host name | Folder |
 |---|---|
@@ -69,9 +69,12 @@ folders from one port, by host name, as they're laid out deployed:
 | anything else (e.g. VS Code's webview origins, `<uuid>.localhost`) | `site/` |
 
 Browsers resolve `*.localhost` to your machine, so this needs no setup. Use
-`localhost`, not `127.0.0.1`. `--gate-port` also serves `gate/` alone on a
-second port, for port forwarders that give each port one exact host name (see
-`build:desolate` in `package.json`).
+`localhost`, not `127.0.0.1`. For port forwarders that give each port one exact
+host name, `--gate-port` also serves `gate/` alone on a second port, and
+`--preview-ports` serves `preview/` alone on each listed port (the fixed preview
+origins of `PREVIEW_ORIGINS`; see `../host/README.md`). `npm start` and
+`npm run dev` use 8081 for the gate and 8082–8085 for previews; a port that's
+taken is skipped with a warning.
 
 ## Dev mode
 

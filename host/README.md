@@ -89,5 +89,25 @@ Locally, previews use `*.preview.localhost` on the same port (browsers resolve
 `*.localhost` to your machine, and `tools/serve.mjs` answers them from the
 app's `preview/` folder). Deployed, set `PREVIEW_URL` (see Deploying in the
 top-level README). An app can turn previews off (`previews: false`).
+
+**A fixed set of preview origins.** Some port forwarders (desolate, and others
+that answer one exact host name per port) can't route a host name per preview.
+An origin includes its port, so a few extra forwarded ports work instead:
+build with `PREVIEW_ORIGINS` (a list of those ports' URLs), and serve
+`preview/` on each port (`tools/serve.mjs --preview-ports=…`). Then:
+
+- Surfaces open `host/preview-open.html?port=5173` on the app's origin
+  (`preview/open.ts`). It asks the page that runs the VM which preview origin
+  that guest port has, and goes there.
+- `runtime-host.ts` hands out the origins as previews open: a port keeps its
+  origin while it has one; when all are taken, the least recently opened one is
+  given to the new port, and the preview that had it starts showing the new
+  server.
+- The preview pages learn their guest port from the page's answer, not from
+  their host name.
+
+Limits: as many previews at once as there are origins (the repo reserves four,
+8082–8085), and the origins are shared by every tab of the app, so previews in
+two tabs at once can take each other's origins.
 Previews only work inside the page that runs the VM: the frame gets its
 connection from that page.

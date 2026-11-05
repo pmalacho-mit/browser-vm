@@ -38,7 +38,7 @@ export const repo = path.resolve(import.meta.dirname, "../..");
  * @property {Required<AppConfig>} app
  * @property {import("@browser-vm/machines").Machine} machine
  * @property {{ dist: string, site: string, gate: string, preview: string, extras: string }} out
- * @property {{ ide?: string, gate?: string, preview?: string }} origins  deployment URLs (IDE_URL, GATE_URL, PREVIEW_URL)
+ * @property {{ ide?: string, gate?: string, preview?: string, previewOrigins?: string[] }} origins  deployment URLs (IDE_URL, GATE_URL, PREVIEW_URL or PREVIEW_ORIGINS)
  * @property {import("esbuild").BuildOptions} common  esbuild options every bundle starts from
  * @property {boolean} dev          true under tools/dev.mjs (parts may skip unchanged heavy copies)
  * @property {(src: string, dest: string) => void} page  copies an HTML page, filling in {{site}} (path to the site root) and {{title}}
@@ -77,15 +77,26 @@ export async function loadApp(name) {
 }
 
 /**
- * Deployment origins: IDE_URL and GATE_URL (both or neither), PREVIEW_URL.
+ * Deployment origins: IDE_URL and GATE_URL (both or neither), and for previews
+ * either PREVIEW_URL (a wildcard template, one origin per port) or
+ * PREVIEW_ORIGINS (a fixed list, separated by spaces or commas, handed out as
+ * previews open: for forwarders that answer one exact host name per port).
  * Only these variables count, so where the build runs never changes its output.
  */
 function origins() {
   const { IDE_URL: ide, GATE_URL: gate, PREVIEW_URL: preview } = process.env;
+  const previewOrigins = (process.env.PREVIEW_ORIGINS ?? "").split(/[\s,]+/).filter(Boolean).map((o) => new URL(o).origin);
   if (!ide !== !gate) throw new Error("set both IDE_URL and GATE_URL, or neither");
   if (ide && gate && new URL(ide).origin === new URL(gate).origin) throw new Error("IDE_URL and GATE_URL must be different origins");
   if (preview && !/^https?:\/\/\{id\}\.[^/]+\/?$/.test(preview)) throw new Error("PREVIEW_URL must look like https://{id}.preview.example.com/");
-  return { ...(ide && gate && { ide: new URL(ide).href, gate: new URL(gate).href }), ...(preview && { preview }) };
+  if (preview && previewOrigins.length) throw new Error("set PREVIEW_URL or PREVIEW_ORIGINS, not both");
+  const taken = [ide, gate].filter(Boolean).map((u) => new URL(/** @type {string} */ (u)).origin);
+  if (previewOrigins.some((o) => taken.includes(o))) throw new Error("PREVIEW_ORIGINS must differ from IDE_URL and GATE_URL");
+  return {
+    ...(ide && gate && { ide: new URL(ide).href, gate: new URL(gate).href }),
+    ...(preview && { preview }),
+    ...(previewOrigins.length && { previewOrigins }),
+  };
 }
 
 /**
@@ -186,6 +197,7 @@ export function writeSiteConfig(ctx) {
   const site = {
     ...(o.ide && { ideUrl: o.ide, gateUrl: o.gate }),
     ...(o.preview && { previewUrl: o.preview }),
+    ...(o.previewOrigins && { previewOrigins: o.previewOrigins }),
     ...(app.gate === "none" && { gate: false }),
     ...(!app.previews && { previews: false }),
     ...(app.start && { start: app.start }),

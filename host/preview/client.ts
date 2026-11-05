@@ -23,7 +23,7 @@ setInterval(() => navigator.serviceWorker?.controller?.postMessage({ vmPreview: 
 let gatewayP: Promise<Client<PreviewGateway>> | undefined;
 const sockets = new Map<string, TunnelSocket>();
 function gateway() {
-  return gatewayP ??= requestPort().then((port) => {
+  return gatewayP ??= requestPort().then(({ port }) => {
     const gw = connect<PreviewGateway>(portEndpoint(port));
     gw.on("socket-data", ({ id, data }: { id: string; data: Uint8Array }) => sockets.get(id)?._receive(data));
     gw.on("socket-close", ({ id }: { id: string }) => sockets.get(id)?._closed(1006, "", false));

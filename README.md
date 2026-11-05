@@ -139,11 +139,14 @@ so where you run it never changes the output.
 - **Webviews** (VS Code's Markdown preview, extension UIs): see `WEBVIEW_HOST`
   in [surfaces/](surfaces/README.md#vs-code-vscode).
 - **Behind a port forwarder** that gives each port one exact host name (GitHub
-  Codespaces, tunnels, desolate), `gate.<host>` won't reach you. Use a second
-  port as the gate's origin instead: `npm start` serves the gate alone on 8081
-  too, and you build with the two forwarded URLs as `IDE_URL` and `GATE_URL`.
-  Under desolate, `npm run build:desolate` does this. Gate settings and secrets
-  are stored per origin, so a new gate origin starts with fresh ones.
+  Codespaces, tunnels, desolate), `gate.<host>` and `*.preview.<host>` won't
+  reach you. Use more ports instead: `npm start` serves the gate alone on 8081
+  and previews on 8082–8085, and you build with the forwarded URLs:
+  `IDE_URL` (8080), `GATE_URL` (8081), and `PREVIEW_ORIGINS` (8082–8085, up to
+  four previews at once). Under desolate, `npm run build:desolate` (or
+  `dev:desolate`) does this; the dev container forwards all six ports. Gate
+  settings and secrets are stored per origin, so a new gate origin starts with
+  fresh ones.
 - **GitHub Pages:** `.github/workflows/deploy-pages.yml` builds the `ide` app,
   runs the tests, and publishes `site/`. A single Pages site is one origin, so
   the gate needs a second host (see the workflow's comments).
@@ -158,8 +161,8 @@ deployment checklist.
 - **Network is HTTP(S) to CORS-enabled sites only** in a browser, plus sites
   approved in the gate's optional bridge extension. For full TCP you'd need a
   relay: v86 supports Wisp and WebSocket relays.
-- **Previews need a wildcard origin** when deployed, and load only from their
-  own server (no CDNs). Streaming responses (server-sent events) arrive only
+- **Previews need a wildcard origin** when deployed (or a few extra ports, up to
+  one preview each), and load only from their own server (no CDNs). Streaming responses (server-sent events) arrive only
   when they end.
 - **Speed.** Emulated x86 runs at a fraction of native speed: fine for shells,
   git and scripts, slow for heavy compiles (see the Rust measurements in
