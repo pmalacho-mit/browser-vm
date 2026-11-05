@@ -47,12 +47,23 @@ declare module "v86" {
     Rename(oldDir: number, oldName: string, newDir: number, newName: string): Promise<number>;
   }
 
-  /** Where file contents come from (blobs fetched lazily from `baseurl`). */
+  /**
+   * Where file contents come from: v86's ServerFileStorageWrapper, which fetches
+   * blobs lazily from `baseurl` and keeps them in an inner MemoryFileStorage.
+   * `sha256` is the blob's file name (e.g. "98d1f85024.bin.zst").
+   */
   export interface V86FileStorage {
     read(sha256: string, offset: number, count: number, fileSize: number): Promise<Uint8Array | null>;
     cache(sha256: string, data: Uint8Array): Promise<void>;
+    /** Called by FS.CloseInode when the guest closes a file from the image. */
     uncache(sha256: string): void;
     load_from_server(sha256: string, fileSize: number): Promise<Uint8Array>;
+    /** URL (or, in Node, path) prefix of the blob files, ending in "/". */
+    baseurl: string;
+    /** Decompresses a .zst blob with the emulator's own zstd. */
+    zstd_decompress(decompressedSize: number, compressed: Uint8Array): ArrayBuffer | Uint8Array;
+    /** The in-memory store: blob name → decompressed contents. */
+    storage: { filedata: Map<string, Uint8Array> };
   }
 
   export interface V86Bus {

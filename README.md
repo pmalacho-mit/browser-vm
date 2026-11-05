@@ -66,8 +66,18 @@ Gotchas worth knowing (each is commented where it's handled):
   while the guest still holds the old one. The provider does `ChangeSize` +
   `Write` on the existing id instead.
 - **Guest page cache.** With 9p `cache=loose`, the guest kept serving stale
-  bytes after editor saves. `cache=none` is coherent, and in my measurements it
-  was no slower (heavy `find` + `tar` loop: 10.8 s vs 11.2 s).
+  bytes after editor saves. The root is mounted with `cache=mmap`: ordinary
+  reads and writes stay uncached (coherent with the editor), while memory-mapped
+  files (program binaries and libraries) are cached. With `cache=none`, every
+  page of a program was read over 9p as it ran: `node -e 1` took 40 s instead
+  of 12.5 s. The kernel command line lives in `extension/src/guest-config.ts`.
+- **File contents stay cached.** v86 drops a file's downloaded contents when the
+  guest closes it, so every run of a program fetched and decompressed it again.
+  `extension/src/blob-cache.ts` keeps them in a memory LRU instead
+  (`linuxVm.fileCacheMB`, default 256), and keeps the compressed blobs in the
+  browser's Cache Storage, so a second visit downloads none. Blob names are
+  content hashes, so `npm start` serves them as `immutable`; on your own host,
+  serve `extensions/linux-vm/vm/rootfs/*` with a long `max-age` too.
 - **Change events.** v86's FS has no event API, so the provider wraps
   `CreateFile`/`Write`/`Unlink`/`Rename` on the instance. The guest's 9p
   server calls the same methods, so `touch foo` in the terminal shows up in the

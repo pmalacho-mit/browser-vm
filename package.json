@@ -18,8 +18,8 @@
     "test:boot:x86_64": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/boot-test.mjs --arch=x86_64",
     "tls": "tls/build.sh",
     "test:gate": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/gate-test.mjs",
-    "profile:boot": "node scripts/boot-profile.mjs 128",
-    "profile:boot:x86_64": "node scripts/boot-profile.mjs 128 --arch=x86_64",
+    "profile:boot": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/boot-profile.mjs 128",
+    "profile:boot:x86_64": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/boot-profile.mjs 128 --arch=x86_64",
     "compare:vm": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/compare-64.mjs",
     "compare:vm:x86_64": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/compare-64.mjs --arch=x86_64",
     "v86_64": "node scripts/fetch-v86_64.mjs"

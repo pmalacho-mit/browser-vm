@@ -8,6 +8,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import zlib from "node:zlib";
 import { target } from "./targets.mjs";
+import { GUEST_CMDLINE } from "../extension/src/guest-config.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
 const vmTarget = target(root); // --arch= or $VM_ARCH: i686 (default) or x86_64
@@ -40,7 +41,7 @@ const mark = (what) => marks.push([((performance.now() - t0) / 1000).toFixed(2),
 const vm = new V86(base({
   bzimage: { url: kernel },
   // printk.time gives the kernel's own clock; no "quiet", so we see the milestones
-  cmdline: "console=ttyS0 root=host9p rootfstype=9p rw rootflags=trans=virtio,cache=none init=/sbin/vm-init tsc=reliable printk.time=1 loglevel=6",
+  cmdline: GUEST_CMDLINE.replace(" quiet", "") + " printk.time=1 loglevel=6",
   autostart: true,
 }));
 let line = "", agent = "", out = "";

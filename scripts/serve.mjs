@@ -15,8 +15,12 @@ const types = {
   ".woff": "font/woff", ".woff2": "font/woff2", ".map": "application/json",
 };
 
-const handler = (req, res) => {
-  const url = new URL(req.url, "http://x");
+// Guest file blobs are named by the hash of their contents, so a cached copy is
+// never stale. Everything else may change between builds: revalidate it.
+const IMMUTABLE = /\/rootfs\/[0-9a-f]{10,}\.bin(\.zst)?$/;
+
+const handler = (/** @type {http.IncomingMessage} */ req, /** @type {http.ServerResponse} */ res) => {
+  const url = new URL(req.url ?? "/", "http://x");
   let file = path.join(dir, decodeURIComponent(url.pathname));
   if (!file.startsWith(dir)) { res.writeHead(403).end(); return; }
   if (fs.existsSync(file) && fs.statSync(file).isDirectory()) file = path.join(file, "index.html");
@@ -25,7 +29,7 @@ const handler = (req, res) => {
     res.writeHead(200, {
       "Content-Type": types[path.extname(file)] || "application/octet-stream",
       "Content-Length": st.size,
-      "Cache-Control": "no-cache",
+      "Cache-Control": IMMUTABLE.test(url.pathname) ? "public, max-age=31536000, immutable" : "no-cache",
     });
     fs.createReadStream(file).pipe(res);
   });

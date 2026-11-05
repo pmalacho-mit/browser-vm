@@ -7,6 +7,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { attachFetchNetwork, loadTLS, writeGuestFile } from "../extension/src/net.ts";
+import { GUEST_CMDLINE } from "../extension/src/guest-config.ts";
+import { installBlobCache } from "../extension/src/blob-cache.ts";
 import { target } from "./targets.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
@@ -30,7 +32,7 @@ const vm = new V86({
   vga_bios: { url: path.join(root, "vendor/vgabios.bin") },
   bzimage: { url: vmTarget.kernel },
   filesystem: { basefs: path.join(guest, "fs.json"), baseurl: path.join(guest, "rootfs") + "/" },
-  cmdline: "console=ttyS0 root=host9p rootfstype=9p rw rootflags=trans=virtio,cache=none init=/sbin/vm-init tsc=reliable quiet",
+  cmdline: GUEST_CMDLINE,
   memory_size: 256 << 20, uart1: true, uart2: true, uart3: true,
   net_device: { type: "virtio", relay_url: "fetch" },
   autostart: false, disable_keyboard: true, disable_mouse: true, disable_speaker: true,
@@ -47,7 +49,10 @@ const stubFetch = async (url, init) => {
 const netLog = [];
 const tls = await loadTLS(pick("build/tls/tls.wasm", "tls/prebuilt/tls.wasm"),
   async (p) => new Response(fs.readFileSync(p)));
+/** Set when the emulator has loaded (before any check runs). @type {import("../extension/src/blob-cache.ts").BlobCacheStats} */
+let cache = /** @type {any} */ (null);
 vm.add_listener("emulator-loaded", async () => {
+  cache = installBlobCache(vm.fs9p, { maxBytes: 256 << 20 }); // as the extension does
   await writeGuestFile(vm.fs9p, "/etc/ssl/certs/browser-vm-ca.pem", new TextEncoder().encode(tls.caPEM));
   attachFetchNetwork(vm, { tls, log: (s) => netLog.push(s), fetchImpl: stubFetch });
   vm.run();
@@ -83,6 +88,13 @@ check("JS write visible to guest", (await sh("./hello.sh")) === "written from JS
 await sh("echo from-guest > /root/project/g.txt");
 const back = new TextDecoder().decode(await vm.read_file("/root/project/g.txt")).trim();
 check("guest write visible to JS", back === "from-guest");
+
+// blob cache: v86 used to drop a file's contents when the guest closed it, so
+// every read (and every run of a program) fetched it again.
+const fetchesBefore = cache.fetches;
+await sh("cat /lib/apk/db/installed > /dev/null; cat /lib/apk/db/installed > /dev/null");
+check("file read twice is fetched once (blob cache)", cache.fetches - fetchesBefore === 1,
+  `${cache.fetches - fetchesBefore} fetch(es); boot fetched ${cache.fetches - 1} files, ${(cache.memoryBytes / 1e6).toFixed(1)} MB cached`);
 
 // control channel
 vm.serial_send_bytes(1, new TextEncoder().encode("9 resize ttyS0 33 101\n"));

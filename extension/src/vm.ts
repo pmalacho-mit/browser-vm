@@ -6,6 +6,8 @@ import { V86, type V86Filesystem } from "v86";
 import type { GateNotice } from "../../types/gate-protocol.ts";
 import { attachFetchNetwork, loadTLS, writeGuestFile, type FetchLike, type GuestError } from "./net.ts";
 import { GateClient } from "./gate-client.ts";
+import { installBlobCache, type BlobCacheStats } from "./blob-cache.ts";
+import { DEFAULT_FILE_CACHE_MB, GUEST_CMDLINE, QUIET_LOGLEVEL } from "./guest-config.ts";
 
 export const CONSOLE_PORTS = [0, 2, 3];
 const AGENT_PORT = 1;
@@ -17,6 +19,8 @@ export interface LinuxVMOptions {
   assetBase: string;
   memoryMB: number;
   extraCmdline: string;
+  /** Memory budget for cached file contents, in MiB (default DEFAULT_FILE_CACHE_MB). */
+  fileCacheMB?: number;
   log: (s: string) => void;
   network?: "fetch" | "off";
   /** BroadcastChannel name of the gate relay on the host page (web/gate-relay.ts). */
@@ -39,6 +43,8 @@ export class LinuxVM {
   emulator!: V86;
   fs!: V86Filesystem;
   gate?: GateClient;
+  /** File-content cache counters (see blob-cache.ts), once the emulator has loaded. */
+  blobCache?: BlobCacheStats;
   listeners = new Map<number, Set<PortListener>>();
   pending = new Map<string, (r: RpcResult) => void>(); // rpc id -> resolve
   nextId = 1;
@@ -86,16 +92,8 @@ export class LinuxVM {
       // The root filesystem: a JSON index + content-addressed (sha256) blobs
       // fetched lazily over HTTP the first time the guest reads each file.
       filesystem: { basefs: `${base}/fs.json`, baseurl: `${base}/rootfs/` },
-      cmdline: [
-        "console=ttyS0",
-        "root=host9p rootfstype=9p rw",
-        // cache=none: the guest page cache never goes stale when the editor
-        // writes files from the JS side (measured: no slower than cache=loose).
-        "rootflags=trans=virtio,cache=none",
-        "init=/sbin/vm-init",
-        "tsc=reliable quiet loglevel=3",
-        extraCmdline,
-      ].join(" "),
+      // See guest-config.ts (9p root with cache=mmap).
+      cmdline: [GUEST_CMDLINE, QUIET_LOGLEVEL, extraCmdline].join(" "),
       memory_size: memoryMB * 1024 * 1024,
       vga_memory_size: 2 * 1024 * 1024,
       uart1: true, uart2: true, uart3: true,
@@ -109,6 +107,13 @@ export class LinuxVM {
     this.emulator.add_listener("emulator-loaded", async () => {
       this.opts.log(`[vm] emulator + filesystem index loaded (${Date.now() - t0} ms)`);
       this.fs = this.emulator.fs9p;
+      // Keep file contents cached after the guest closes them, and keep the
+      // downloaded blobs across visits (Cache Storage; blob names are hashes).
+      this.blobCache = installBlobCache(this.fs, {
+        maxBytes: (this.opts.fileCacheMB ?? DEFAULT_FILE_CACHE_MB) * 1024 * 1024,
+        persistentCache: "linux-vm-blobs",
+        log: this.opts.log,
+      });
       this._resolveFs(this.fs);
       this._setState("booting");
       if (net) {

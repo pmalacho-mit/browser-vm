@@ -13,6 +13,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { attachFetchNetwork, loadTLS, writeGuestFile } from "../extension/src/net.ts";
+import { GUEST_CMDLINE } from "../extension/src/guest-config.ts";
 import { target } from "./targets.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
@@ -32,7 +33,7 @@ const vm = new V86({
   vga_bios: { url: path.join(root, "vendor/vgabios.bin") },
   bzimage: { url: kernel },
   filesystem: { basefs: path.join(guest, "fs.json"), baseurl: path.join(guest, "rootfs") + "/" },
-  cmdline: "console=ttyS0 root=host9p rootfstype=9p rw rootflags=trans=virtio,cache=none init=/sbin/vm-init tsc=reliable quiet",
+  cmdline: GUEST_CMDLINE,
   memory_size: 256 << 20, uart1: true, uart2: true, uart3: true,
   net_device: { type: "virtio", relay_url: "fetch" },
   autostart: false, disable_keyboard: true, disable_mouse: true, disable_speaker: true,

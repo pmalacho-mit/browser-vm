@@ -1,7 +1,7 @@
 {
   "name": "linux-vm",
   "displayName": "Linux VM (v86)",
-  "description": "Boots a Linux VM inside the browser (v86, x86\u2192WASM) and bridges its filesystem, consoles and search into VS Code.",
+  "description": "Boots a Linux VM inside the browser (v86, x86→WASM) and bridges its filesystem, consoles and search into VS Code.",
   "publisher": "local",
   "version": "0.1.0",
   "license": "MIT",
@@ -66,6 +66,12 @@
           "type": "string",
           "default": "",
           "description": "Extra kernel command line arguments.",
+          "scope": "machine"
+        },
+        "linuxVm.fileCacheMB": {
+          "type": "number",
+          "default": 256,
+          "description": "Memory for cached file contents from the VM's image, in MiB. Files stay cached after programs close them, so running a program again needs no download (takes effect on reload).",
           "scope": "machine"
         },
         "linuxVm.openTerminalOnStartup": {

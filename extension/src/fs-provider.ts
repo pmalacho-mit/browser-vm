@@ -196,16 +196,32 @@ export class VmFileSystemProvider implements vscode.FileSystemProvider {
 
   _instrument(fs: V86Filesystem) {
     const queue = new Map<string, vscode.FileChangeType>();
+    // Written inodes, resolved to paths only when the batch is flushed: finding
+    // a file's path means scanning every directory, which was too slow to do on
+    // every write (a busy guest writes thousands of times per second).
+    const written = new Set<number>();
     let timer: ReturnType<typeof setTimeout> | undefined;
+    const add = (path: string | undefined, type: vscode.FileChangeType) => {
+      if (path) queue.set(path, queue.get(path) === vscode.FileChangeType.Created ? vscode.FileChangeType.Created : type);
+    };
+    const flush = () => {
+      timer = undefined;
+      if (written.size) {
+        for (const path of this._pathsOf(written).values()) add(path, vscode.FileChangeType.Changed);
+        written.clear();
+      }
+      const events = [...queue].map(([p, t]) => ({ type: t, uri: vscode.Uri.from({ scheme: "vmfs", path: p }) }));
+      queue.clear();
+      if (events.length) this._emitter.fire(events);
+    };
+    const schedule = () => {
+      clearTimeout(timer);
+      timer = setTimeout(flush, 50);
+    };
     const emit = (path: string | undefined, type: vscode.FileChangeType) => {
       if (!path) return;
-      queue.set(path, queue.get(path) === vscode.FileChangeType.Created ? vscode.FileChangeType.Created : type);
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        const events = [...queue].map(([p, t]) => ({ type: t, uri: vscode.Uri.from({ scheme: "vmfs", path: p }) }));
-        queue.clear();
-        this._emitter.fire(events);
-      }, 50);
+      add(path, type);
+      schedule();
     };
     const pathIn = (parentId: number, name: string) => {
       const dir = parentId === ROOT ? "" : "/" + fs.GetFullPath(parentId);
@@ -231,20 +247,28 @@ export class VmFileSystemProvider implements vscode.FileSystemProvider {
     wrap("Rename",
       (od: number, on: string, nd: number, nn: string) => [pathIn(od, on), pathIn(nd, nn)] as const,
       (ret, [a, b]) => { if (ret === 0) { emit(a, C.Deleted); emit(b, C.Created); } });
-    wrap("Write", null, (_r, _ctx, id: number) => emit(this._pathOf(id), C.Changed));
+    wrap("Write", null, (_r, _ctx, id: number) => { written.add(id); schedule(); });
   }
 
   /** Files have no ".." entry, so find a file's path by scanning directories (cheap: ~10k entries). */
   _pathOf(id: number): string | undefined {
+    return this._pathsOf(new Set([id])).get(id);
+  }
+
+  /** Paths of several inodes in one scan of all directories (first name found, for hard links). */
+  _pathsOf(ids: Set<number>): Map<number, string> {
+    const found = new Map<number, string>();
     const inodes = this.fs.inodes;
-    for (let d = 0; d < inodes.length; d++) {
+    for (let d = 0; d < inodes.length && found.size < ids.size; d++) {
       const dir = inodes[d];
       if (!dir || !isDir(dir)) continue;
       for (const [name, cid] of dir.direntries) {
-        if (cid === id && name !== "." && name !== "..") return (d === ROOT ? "" : "/" + this.fs.GetFullPath(d)) + "/" + name;
+        if (ids.has(cid) && !found.has(cid) && name !== "." && name !== "..") {
+          found.set(cid, (d === ROOT ? "" : "/" + this.fs.GetFullPath(d)) + "/" + name);
+        }
       }
     }
-    return undefined;
+    return found;
   }
 
   /** Depth-first walk used by the search providers. Yields [path, id, inode] for regular files. */

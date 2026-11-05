@@ -18,6 +18,7 @@ export function activate(context: vscode.ExtensionContext) {
     assetBase,
     memoryMB: cfg.get<number>("memoryMB", 512),
     extraCmdline: cfg.get<string>("kernelCmdline", ""),
+    fileCacheMB: cfg.get<number>("fileCacheMB", 256),
     network: cfg.get<"fetch" | "off">("network", "fetch"),
     gateChannel: cfg.get<string>("gateChannel", ""),
     // A secret was needed while the gate is locked: offer to unlock.
