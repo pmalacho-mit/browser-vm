@@ -75,6 +75,7 @@ window.product = {
     "security.workspace.trust.enabled": false,
     "extensions.ignoreRecommendations": true,
     "linuxVm.gateChannel": window.__vmGateChannel,
+    "linuxVm.runtimeChannel": window.__vmRuntimeChannel,
     "linuxVm.playground": /^[a-z0-9][a-z0-9.-]{0,63}$/.test(playground) ? playground : "",
   },
 };

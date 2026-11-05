@@ -1,0 +1,9 @@
+{
+  // The VM runtime: no VS Code, no DOM. Runs in a dedicated Web Worker
+  // (web/runtime/), in VS Code's extension host, and in Node (tests, builders).
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["es2023", "webworker"]
+  },
+  "include": ["src/**/*.ts", "../types/**/*.d.ts"]
+}

@@ -25,10 +25,10 @@ import zlib from "node:zlib";
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { target } from "./targets.mjs";
-import { attachFetchNetwork, loadTLS, writeGuestFile } from "../extension/src/net.ts";
-import { GUEST_CMDLINE } from "../extension/src/guest-config.ts";
-import { installBlobCache } from "../extension/src/blob-cache.ts";
-import { AgentClient, installAgent } from "../extension/src/agent-client.ts";
+import { attachFetchNetwork, loadTLS, writeGuestFile } from "../runtime/src/net.ts";
+import { GUEST_CMDLINE } from "../runtime/src/guest-config.ts";
+import { installBlobCache } from "../runtime/src/blob-cache.ts";
+import { AgentClient, installAgent } from "../runtime/src/agent-client.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
 const fromRoot = (/** @type {string[]} */ ...p) => path.join(root, ...p);
@@ -165,7 +165,7 @@ async function snapshot(/** @type {string} */ id, /** @type {Manifest} */ m) {
     bios: { url: fromRoot("vendor/seabios.bin") }, vga_bios: { url: fromRoot("vendor/vgabios.bin") },
     bzimage: { url: vm.kernel }, cmdline: GUEST_CMDLINE,
     filesystem: { basefs: path.join(OUT, id, "fs.json"), baseurl: POOL + "/" },
-    // The browser restores it with these same devices (extension/src/vm.ts).
+    // The browser restores it with these same devices (runtime/src/vm.ts).
     memory_size: m.memoryMB << 20, vga_memory_size: 2 << 20, uart1: true, uart2: true, uart3: true,
     net_device: { type: "virtio", relay_url: "fetch" },
     autostart: false, disable_keyboard: true, disable_mouse: true, disable_speaker: true,

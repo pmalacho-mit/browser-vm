@@ -11,6 +11,8 @@ declare global {
   interface Window {
     /** BroadcastChannel name of this tab's gate relay (set by gate-relay.ts, read by boot.ts). */
     __vmGateChannel?: string;
+    /** BroadcastChannel name of this tab's VM runtime (set by runtime-host.ts, read by boot.ts). */
+    __vmRuntimeChannel?: string;
     /** Workbench construction options (IWorkbenchConstructionOptions), set by boot.ts. */
     product: Record<string, unknown>;
     /** URL of dist/vscode, without a trailing slash (set by boot.ts, read by amd-config.ts). */

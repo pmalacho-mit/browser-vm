@@ -8,7 +8,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import zlib from "node:zlib";
 import { target } from "./targets.mjs";
-import { GUEST_CMDLINE } from "../extension/src/guest-config.ts";
+import { GUEST_CMDLINE } from "../runtime/src/guest-config.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
 const vmTarget = target(root); // --arch= or $VM_ARCH: i686 (default) or x86_64

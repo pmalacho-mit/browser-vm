@@ -105,6 +105,12 @@
           "description": "Set by the host page: BroadcastChannel name of the network gate relay.",
           "scope": "machine"
         },
+        "linuxVm.runtimeChannel": {
+          "type": "string",
+          "default": "",
+          "description": "Set by the host page: BroadcastChannel name of the VM runtime.",
+          "scope": "machine"
+        },
         "linuxVm.playground": {
           "type": "string",
           "default": "",

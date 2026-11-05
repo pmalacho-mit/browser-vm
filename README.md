@@ -20,32 +20,40 @@ from inside the VM via the browser's `fetch()` (see Networking).
 ## How it works
 
 ```
-┌─────────────────────────────── browser tab ────────────────────────────────┐
-│  index.html  → boots the Code-OSS web workbench (dist/vscode, MIT)         │
-│     folderUri = vmfs:/root/project          extension gallery = Open VSX   │
-│                                                                            │
-│  ┌──────── web-worker extension host ─────────────────────────────────┐    │
-│  │  linux-vm extension (extension/src)                                 │    │
-│  │   FileSystemProvider "vmfs:"  ─┐                                    │    │
-│  │   File/TextSearchProvider     ─┼──► v86 FS object (JS, in memory)   │    │
-│  │   Pseudoterminals ×3          ─┼──► serial ports 0/2/3              │    │
-│  │   resize / hangup RPC         ─┴──► serial port 1                   │    │
-│  │                                                                     │    │
-│  │   v86: x86 CPU → WASM JIT ─────────────────────────────────────┐    │    │
-│  │   │ Linux 6.18 i686 (guest/prebuilt/bzImage)                    │    │    │
-│  │   │   root fs = virtio-9p  ◄── served by that same FS object     │    │    │
-│  │   │   /sbin/vm-init: shells on ttyS0/2/3, vm-agent on ttyS1      │    │    │
-│  │   │   userland = docker export of guest/Dockerfile (Alpine x86)  │    │    │
-│  │   └──────────────────────────────────────────────────────────────┘    │    │
-│  └─────────────────────────────────────────────────────────────────────┘    │
-└────────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────── browser tab ─────────────────────────────────┐
+│  index.html  → boots the Code-OSS web workbench (dist/vscode, MIT)           │
+│     folderUri = vmfs:/root/project          extension gallery = Open VSX     │
+│                                                                              │
+│  ┌─ web-worker extension host ──────────┐                                    │
+│  │  linux-vm extension (extension/src)   │      BroadcastChannel             │
+│  │   FileSystemProvider "vmfs:"          │◄──── requests, events ───────┐    │
+│  │   File/TextSearchProvider             │      (runtime/src/rpc.ts)    │    │
+│  │   Pseudoterminals ×3                  │                              │    │
+│  └───────────────────────────────────────┘                              │    │
+│  ┌─ hidden iframe runtime/ (CSP: connect-src 'self') ──────────────────┼─┐  │
+│  │  runtime worker (runtime/src/runtime.ts)                            ▼ │  │
+│  │   files, search ──► v86 FS object (JS, in memory)                     │  │
+│  │   terminals    ──► serial ports 0/2/3      agent RPC ──► port 1       │  │
+│  │                                                                       │  │
+│  │   v86: x86 CPU → WASM JIT ────────────────────────────────────────┐   │  │
+│  │   │ Linux 6.18 i686 (guest/prebuilt/bzImage)                      │   │  │
+│  │   │   root fs = virtio-9p  ◄── served by that same FS object       │   │  │
+│  │   │   /sbin/vm-init: shells on ttyS0/2/3, vm-agent on ttyS1        │   │  │
+│  │   │   userland = docker export of guest/Dockerfile (Alpine x86)    │   │  │
+│  │   └────────────────────────────────────────────────────────────────┘   │  │
+│  └────────────────────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────────────────────┘
    files fetched lazily over HTTP:  vm/fs.json (index) + vm/rootfs/<sha256>.bin.zst
 ```
 
 The key idea: the guest's root filesystem is a JavaScript object (v86's 9p
-server). The Linux kernel mounts it over virtio-9p, and the VS Code
-`FileSystemProvider` reads and writes **the same inodes** directly. There is no
-syncing and no second copy.
+server). The Linux kernel mounts it over virtio-9p, and the editor reads and
+writes **the same inodes** through the runtime. There is no syncing and no
+second copy.
+
+The VM runs in its own worker, the **runtime**, not inside VS Code. VS Code is
+one frontend of it; `lite/` (CodeMirror + xterm.js) and the MCP server are two
+more. See "The runtime and its frontends".
 
 ## What's technically necessary (and what I ran into building it)
 
@@ -53,12 +61,13 @@ syncing and no second copy.
 |---|---|---|
 | **Workbench** | `node_modules/vscode-web` → `dist/vscode` | Prebuilt Code-OSS 1.91 web build (MIT). The host page passes `IWorkbenchConstructionOptions` via `window.product`. |
 | **Host page** | `web/index.html`, `web/boot.ts` | Opens `vmfs:/root/project`, registers the extension through `additionalBuiltinExtensions`, sets Open VSX, allows proposed APIs, sets the webview endpoint. Works from any sub-path. |
-| **Bridge extension** | `extension/src` | A *web* extension (`"browser"` entry). The whole VM runs inside VS Code's extension-host Web Worker. |
+| **Runtime** | `runtime/src`, `web/runtime/`, `web/runtime-host.ts` | The VM and everything editors need from it (files, search, terminals, exec), in its own Web Worker behind a request/event protocol. See "The runtime and its frontends". |
+| **VS Code extension** | `extension/src` | A *web* extension (`"browser"` entry) in VS Code's extension-host Web Worker: maps the runtime onto VS Code's file system, search and terminal APIs. |
 | **Emulator** | npm `v86` (BSD-2) | x86 → WASM JIT. Only 32-bit x86, so the guest is i686. |
 | **Kernel** | `guest/kernel*.config`, `guest/build-kernel.sh` | `tinyconfig` plus virtio-pci, 9p, 8250 serial and devtmpfs, all built in, so there's no initramfs and no modules. 2 MB. Like Docker, the *runtime* supplies the kernel and the image supplies only userland. The 32-bit kernel needs `CONFIG_COMPAT_32BIT_TIME`: without it, `futex(2)` returned ENOSYS, Go programs crashed, npm failed, and V8 ran several times slower (`node -e 1`: 12.5 s → 2.9 s). |
 | **Userland** | `guest/Dockerfile`, `guest/build-rootfs.sh` | Any `linux/386` image. `docker export` → `tools/fs2json.py` + `copy-to-sha256.py` (from v86) → JSON index + content-addressed zstd blobs. |
 | **PID 1** | `guest/vm-init` | Mounts `/proc`, `/sys`, `/dev`, `/tmp`. Runs a respawning `setsid -c` login shell per console (that's what gives job control and Ctrl+C) and starts the agent. Independent of the distro's init system. |
-| **Control plane** | `guest/agent/` (Go), `extension/src/agent-client.ts` | JSON-lines RPC on ttyS1: `resize` (TIOCSWINSZ → SIGWINCH, so vim/top re-layout), `hangup` (closing a terminal tab SIGHUPs that session, like SSH), `exec` (exit code, stdout, stderr), `ports` (listening sockets) and `refresh` (after a snapshot restore: reseed the RNG, set the clock, swap in this tab's CA). The extension writes the binary into the guest before boot, so it works with any image; images still ship the shell agent `guest/vm-agent` (resize and hangup only) as a fallback. `npm run agent` rebuilds it (reproducibly). |
+| **Control plane** | `guest/agent/` (Go), `runtime/src/agent-client.ts` | JSON-lines RPC on ttyS1: `resize` (TIOCSWINSZ → SIGWINCH, so vim/top re-layout), `hangup` (closing a terminal tab SIGHUPs that session, like SSH), `exec` (exit code, stdout, stderr), `ports` (listening sockets) and `refresh` (after a snapshot restore: reseed the RNG, set the clock, swap in this tab's CA). The runtime writes the binary into the guest before boot, so it works with any image; images still ship the shell agent `guest/vm-agent` (resize and hangup only) as a fallback. `npm run agent` rebuilds it (reproducibly). |
 
 Gotchas worth knowing (each is commented where it's handled):
 
@@ -70,10 +79,10 @@ Gotchas worth knowing (each is commented where it's handled):
   reads and writes stay uncached (coherent with the editor), while memory-mapped
   files (program binaries and libraries) are cached. With `cache=none`, every
   page of a program was read over 9p as it ran: `node -e 1` took 40 s instead
-  of 12.5 s. The kernel command line lives in `extension/src/guest-config.ts`.
+  of 12.5 s. The kernel command line lives in `runtime/src/guest-config.ts`.
 - **File contents stay cached.** v86 drops a file's downloaded contents when the
   guest closes it, so every run of a program fetched and decompressed it again.
-  `extension/src/blob-cache.ts` keeps them in a memory LRU instead
+  `runtime/src/blob-cache.ts` keeps them in a memory LRU instead
   (`linuxVm.fileCacheMB`, default 256), and keeps the compressed blobs in the
   browser's Cache Storage, so a second visit downloads none. Blob names are
   content hashes, so `npm start` serves them as `immutable`; on your own host,
@@ -83,8 +92,9 @@ Gotchas worth knowing (each is commented where it's handled):
   server calls the same methods, so `touch foo` in the terminal shows up in the
   Explorer.
 - **Nested workers.** v86 schedules itself with a blob-URL Worker and revokes
-  the URL immediately. VS Code's extension host wraps `Worker` and loads the
-  URL later, so the extension defers `URL.revokeObjectURL`.
+  the URL immediately. VS Code's extension host (where the VM used to run)
+  wraps `Worker` and loads the URL later, so `vm.ts` defers
+  `URL.revokeObjectURL`.
 - **COM4.** Linux runs a loopback self-test only on COM4, and v86's UART doesn't
   emulate loopback, so ttyS3 probed as "unknown". `vm-init` runs
   `setserial /dev/ttyS3 uart 16550A` to declare it.
@@ -102,7 +112,7 @@ Gotchas worth knowing (each is commented where it's handled):
 ## Networking (still no server)
 
 The guest has a virtio NIC on v86's fake network stack (ARP, DNS and TCP,
-implemented in JavaScript). `extension/src/net.ts` takes over TCP connections
+implemented in JavaScript). `runtime/src/net.ts` takes over TCP connections
 to ports 80 and 443 and replays each HTTP request with the browser's `fetch()`:
 
 ```
@@ -120,7 +130,7 @@ HttpSession: parse HTTP/1.1 (over TLS, the Host must match the SNI) → hand the
 
 Same design as container2wasm's in-browser proxy. Details:
 
-- **Per-tab CA.** `tls.wasm` generates a CA when it starts. The extension writes
+- **Per-tab CA.** `tls.wasm` generates a CA when it starts. The runtime writes
   its certificate to `/etc/ssl/certs/browser-vm-ca.pem` before boot, and
   `vm-init` appends it to the system bundle. `/etc/profile.d/browser-vm-network.sh`
   points Node, pip and requests at it, because they ship their own CA lists. The
@@ -155,7 +165,7 @@ allowlists, leak-suspect auditing, response scrubbing), with the browser
 supplying the isolation:
 
 ```
-VM ─► net.ts (extension host) ─BroadcastChannel─► index.html (gate-relay.ts) ─MessagePort─►
+VM ─► net.ts (runtime worker) ─BroadcastChannel─► index.html (gate-relay.ts) ─MessagePort─►
       gate iframe, origin gate.<host>:  local-network refusal → network policy →
       secret substitution → fetch(credentials: "omit") → scrub response → back
 ```
@@ -353,9 +363,9 @@ VM and times a restore. Measured in Node (2 CPU cores):
 
 Where the remaining cold boot goes: ~0.1 s emulator load, ~0.4 s firmware and
 LZ4 decompression, ~1.2 s kernel init, ~1.9 s `vm-init` (about 20 short-lived
-processes, each re-reading busybox over 9p). In the browser the VM boot takes
-~6 s inside VS Code's extension host (vs 4.2 s in Node), plus ~2 s before the
-workbench activates the extension.
+processes, each re-reading busybox over 9p). In the browser, the VS Code page
+shows a running VM about 4 s after load (the runtime starts with the page, in
+parallel with the workbench); a playground restore, 1.4–2.7 s.
 
 Snapshots (`emulator.save_state()`) restore in ~0.1 s at 128 MiB RAM but
 ~1.1 s at 512 MiB: restore cost scales with RAM size, not with what's in it.
@@ -388,7 +398,7 @@ npm run v86_64                # update vendor/v86_64 from the fork's CI release 
 
 `scripts/targets.mjs` maps the architecture to files. `dist/` holds one VM at a
 time: the last build wins. Everything else (the extension, gate, vault, network
-and init script) is architecture-independent and unchanged; the extension's
+and init script) is architecture-independent and unchanged; the runtime's
 `import { V86 } from "v86"` is pointed at the selected emulator at build time.
 
 Measured on a 2-core aarch64 dev container:
@@ -451,6 +461,65 @@ A snapshot only restores on the emulator and kernel it was built with, so the
 site build skips stale ones (rebuild them) and CI rebuilds them when anything
 that goes into them changes. 32-bit only for now (see "64-bit").
 
+## The runtime and its frontends
+
+Everything an editor needs from the VM sits behind one API,
+`Runtime` in `runtime/src/runtime.ts`: `boot`, files (`stat`, `readdir`,
+`read`, `write`, `mkdir`, `remove`, `rename`), search (`searchFiles`,
+`searchText`), terminals (`openTerminal`, `writeTerminal`, `resizeTerminal`,
+`closeTerminal`), processes (`exec`, `ports`) and the gate (`showGate`). It
+emits events: `state`, `log`, `fs` (changes from the editor and the guest
+alike), `term-data`, `notice`, `refused`, `booted`.
+
+`runtime/src/rpc.ts` carries that API over anything that posts messages: a
+BroadcastChannel in a page, a MessagePort, or an in-process pair in Node.
+Calls return promises; errors keep their codes (`FileNotFound`, …).
+
+```ts
+import { channelEndpoint, connect } from "../runtime/src/rpc.ts";
+import type { Runtime } from "../runtime/src/runtime.ts";
+
+const rt = connect<Runtime>(channelEndpoint(new BroadcastChannel(window.__vmRuntimeChannel!)));
+await rt.api.boot({ assetBase: "/extensions/linux-vm/vm", playground: "python-3.12" });
+rt.on("term-data", ({ id, data }) => term.write(data));
+const { id } = await rt.api.openTerminal({ rows: 24, cols: 80 });
+await rt.api.write("/root/project/main.py", new TextEncoder().encode("print(42)\n"));
+const r = await rt.api.exec(["python3", "main.py"], { cwd: "/root/project" });
+```
+
+In a page, `runtime-host.js` starts the runtime: a hidden iframe
+(`runtime/index.html`) whose CSP allows connections to its own site only, so the
+guest's traffic can only leave through the network gate. The iframe starts the
+worker from a blob URL so the worker inherits that CSP even on hosts that can't
+set HTTP headers. The page learns the channel name from
+`window.__vmRuntimeChannel`; VS Code gets it through the setting
+`linuxVm.runtimeChannel`.
+
+| Frontend | Where | What it is |
+|---|---|---|
+| VS Code | `index.html`, `extension/src/` | the full IDE; the extension is a thin client (20 KB) |
+| Lite | `lite/index.html`, `web/lite/` | a file tree, CodeMirror 6 and xterm.js, about 1.7 MB unminified. Takes `?playground=` too. The reference for bringing your own editor. |
+| MCP server | `mcp/server.ts` | the runtime under Node, for AI agents (below) |
+
+### MCP server
+
+`mcp/server.ts` gives an agent its own VM over the
+[Model Context Protocol](https://modelcontextprotocol.io) (stdio). Its tools are
+`run_command`, `read_file`, `write_file`, `list_directory`, `search_text` and
+`list_ports`. It runs the same runtime in-process under Node, with VM assets
+from `dist/` (`npm run build` first).
+
+```
+claude mcp add browser-vm -- node --experimental-strip-types /path/to/browser-vm/mcp/server.ts --playground node-24
+```
+
+Options: `--playground <id>`, `--allow <host>` (repeatable), `--network off`,
+`--memory-mb <n>`, `--assets <dir>`. The guest's network uses the gate's own
+policy code (`web/gate/core.ts`): package registries plus `--allow` hosts, and
+never private addresses or IPs. There is no browser here, so no CORS limits
+and no secret vault. Use `node` directly or `npm run -s mcp`: without `-s`,
+npm prints a banner on stdout, which is the protocol channel.
+
 ## Customizing the guest
 
 Edit `guest/Dockerfile` (keep the two `COPY` lines; its architecture must match
@@ -485,18 +554,27 @@ The browser code is TypeScript, compiled by esbuild (`scripts/esbuild.config.mjs
 
 | Source | Output | Runs in |
 |---|---|---|
-| `extension/src/*.ts` | `dist/extensions/linux-vm/dist/extension.js` (with the emulator for `VM_ARCH`) | VS Code's extension-host Web Worker |
-| `web/gate-relay.ts`, `web/boot.ts`, `web/amd-config.ts` | `dist/*.js` (classic scripts, loaded in order by `index.html`) | the IDE page |
+| `runtime/src/*.ts` | `dist/runtime/worker.js` (with the emulator for `VM_ARCH`) | the runtime worker |
+| `web/runtime/frame.ts` | `dist/runtime/frame.js` | the runtime's hidden iframe |
+| `extension/src/*.ts` | `dist/extensions/linux-vm/dist/extension.js` | VS Code's extension-host Web Worker |
+| `web/gate-relay.ts`, `web/runtime-host.ts`, `web/boot.ts`, `web/amd-config.ts` | `dist/*.js` (classic scripts, loaded in order by `index.html`) | the IDE page |
+| `web/lite/lite.ts` | `dist/lite/lite.js` + `lite.css` | the lite page |
 | `web/gate/*.ts` | `dist/gate/gate.js` + `chunks/` (ES module) | the gate's origin |
-| `types/gate-protocol.ts` | types only | messages shared by all three |
+| `mcp/server.ts` | not bundled; Node runs it directly | an MCP client's child process |
+| `types/gate-protocol.ts` | types only | messages shared by the page, runtime and gate |
+
+Static files under `web/` (`*.html`, `*.css`, …) are copied to the same place
+in `dist/`.
 
 ```
 npm run dev        # full build, then rebuild on change and serve on :8080/:8081
-npm run typecheck  # tsc over extension/, web/ and scripts/ (also run in CI)
+npm run typecheck  # tsc over runtime/, extension/, web/, scripts/ and mcp/ (also run in CI)
+npm run test:runtime   # the runtime through its protocol, under Node (needs a build)
+npm run test:mcp       # the MCP server, as an MCP client sees it (needs a build)
 ```
 
-After a change, reload the page (or *Developer: Reload Window*): the extension
-host loads the extension only at startup. esbuild strips types without
+After a change, reload the page (*Developer: Reload Window* reloads the
+extension, but not the runtime worker: that needs a page reload). esbuild strips types without
 checking them, so a type error doesn't block a rebuild; `npm run typecheck`
 or your editor reports it. Changes to the kernel, guest image or `tls.wasm`
 still need their own `npm run kernel/guest/tls` and a restart.

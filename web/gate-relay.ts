@@ -9,7 +9,8 @@
 import type { FromGate, ToGate, ToRelay } from "../types/gate-protocol.ts";
 
 (() => {
-  const pageBase = new URL(".", location.href);
+  // The site root: where this script is (pages in subfolders, like lite/, load it from there).
+  const pageBase = new URL(".", (document.currentScript as HTMLScriptElement | null)?.src ?? location.href);
   // Locally: http://gate.localhost:<port> serves these same files. Elsewhere,
   // window.GATE_URL names the gate (e.g. "https://gate.example.com/"): set by
   // site.js when the site was built with GATE_URL/IDE_URL (scripts/build-site.mjs).

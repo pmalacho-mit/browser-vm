@@ -78,6 +78,11 @@ jobs:
           GATE_URL: ${{ vars.GATE_URL }}
           VM_ARCH: ${{ vars.VM_ARCH }}
 
+      # The runtime and MCP tests boot the built VM under Node (upstream v86 only).
+      - name: Test the runtime and the MCP server
+        if: vars.VM_ARCH != 'x86_64'
+        run: npm run test:runtime && npm run test:mcp
+
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3

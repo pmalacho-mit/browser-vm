@@ -9,7 +9,8 @@
     "dev:x86_64": "node scripts/dev.mjs --arch=x86_64",
     "build:desolate": "IDE_URL=${DESOLATE_EXTERNAL_8080_URL:?port 8080 is not forwarded by desolate} GATE_URL=${DESOLATE_EXTERNAL_8081_URL:?port 8081 is not forwarded by desolate - rebuild the container} node scripts/build-site.mjs",
     "start": "node scripts/serve.mjs dist 8080 8081",
-    "typecheck": "tsc -p extension && tsc -p web && tsc -p scripts",
+    "mcp": "node --experimental-strip-types --disable-warning=ExperimentalWarning mcp/server.ts",
+    "typecheck": "tsc -p runtime && tsc -p extension && tsc -p web && tsc -p scripts && tsc -p mcp",
     "guest": "guest/build-rootfs.sh",
     "guest:x86_64": "VM_ARCH=x86_64 guest/build-rootfs.sh",
     "kernel": "guest/build-kernel.sh",
@@ -17,6 +18,8 @@
     "playgrounds": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/build-playgrounds.mjs",
     "test:boot": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/boot-test.mjs",
     "test:boot:x86_64": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/boot-test.mjs --arch=x86_64",
+    "test:runtime": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/runtime-test.mjs",
+    "test:mcp": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/mcp-test.mjs",
     "tls": "tls/build.sh",
     "agent": "guest/agent/build.sh",
     "test:gate": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/gate-test.mjs",
@@ -35,8 +38,16 @@
   "private": true,
   "type": "module",
   "devDependencies": {
+    "@codemirror/lang-javascript": "^6.2.5",
+    "@codemirror/lang-json": "^6.0.2",
+    "@codemirror/lang-markdown": "^6.5.2",
+    "@codemirror/lang-python": "^6.2.1",
+    "@codemirror/theme-one-dark": "^6.1.3",
     "@types/node": "^22.20.5",
     "@types/vscode": "1.91.0",
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/xterm": "^5.5.0",
+    "codemirror": "^6.0.1",
     "typescript": "^7.0.2"
   }
 }

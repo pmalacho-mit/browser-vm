@@ -30,6 +30,11 @@ export interface LinuxVMOptions {
   network?: "fetch" | "off";
   /** BroadcastChannel name of the gate relay on the host page (web/gate-relay.ts). */
   gateChannel?: string;
+  /**
+   * The guest's way out, instead of the page's gate: for hosts without one
+   * (the MCP server under Node applies the gate's policy itself, mcp/server.ts).
+   */
+  fetchImpl?: FetchLike;
   /** A request needed a secret while the gate was locked. */
   onRefused?: (host: string, code: "locked") => void;
   onNotice?: (n: GateNotice) => void;
@@ -119,7 +124,9 @@ export class LinuxVM {
       vga_memory_size: 2 * 1024 * 1024,
       uart1: true, uart2: true, uart3: true,
       // A virtio NIC on v86's fake network stack (ARP/DNS/TCP in JS, no server).
-      ...(net && { net_device: { type: "virtio", relay_url: "fetch" } }),
+      // A snapshot has a NIC in its device state, so a restore needs one too:
+      // with the network off, it stays unplugged (no relay).
+      ...((net || snapshot) && { net_device: { type: "virtio", ...(net && { relay_url: "fetch" }) } }),
       // Started below, once the agent and the CA certificate are in place.
       autostart: false,
       disable_keyboard: true, disable_mouse: true, disable_speaker: true,
@@ -202,6 +209,7 @@ export class LinuxVM {
 
   /** All guest traffic goes through the network gate (web/gate/), which also owns the secrets. */
   _gateFetch(): FetchLike {
+    if (this.opts.fetchImpl) return this.opts.fetchImpl;
     if (!this.opts.gateChannel) return () => Promise.reject(Object.assign(new Error("no network gate"), { guestMessage: "This page has no network gate.\n" }));
     const gate = this.gate = new GateClient({
       channelName: this.opts.gateChannel,

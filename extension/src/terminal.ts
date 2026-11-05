@@ -1,73 +1,67 @@
-// VS Code terminals backed by the guest's serial consoles.
-// Each terminal tab owns one port (ttyS0/2/3). The guest runs a real tty with
-// a line discipline there, so job control, Ctrl+C, vim, top... all work.
+// VS Code terminals backed by the guest's serial consoles, through the VM
+// runtime. Each terminal tab owns one console (ttyS0/2/3); the guest runs a
+// real tty with a line discipline there, so job control, Ctrl+C, vim, top…
+// all work.
 import * as vscode from "vscode";
-import { CONSOLE_PORTS, type LinuxVM } from "./vm.ts";
+import type { Client } from "../../runtime/src/rpc.ts";
+import type { Runtime, TerminalInfo } from "../../runtime/src/runtime.ts";
 
 export class ConsoleTerminals {
-  vm: LinuxVM;
-  inUse = new Set<number>();
+  private rt: Client<Runtime>;
+  private isRunning: () => boolean;
 
-  constructor(vm: LinuxVM) {
-    this.vm = vm;
+  constructor(rt: Client<Runtime>, isRunning: () => boolean) {
+    this.rt = rt;
+    this.isRunning = isRunning;
   }
 
-  createPty(): vscode.ExtensionTerminalOptions | undefined {
-    const port = CONSOLE_PORTS.find((p) => !this.inUse.has(p));
-    if (port === undefined) {
-      vscode.window.showWarningMessage(`All ${CONSOLE_PORTS.length} VM consoles are in use. Close a terminal first.`);
-      return undefined;
-    }
-    this.inUse.add(port);
-    const tty = `ttyS${port}`;
-    const vm = this.vm;
+  createPty(): vscode.ExtensionTerminalOptions {
+    const rt = this.rt;
     const writeEmitter = new vscode.EventEmitter<string>();
+    const closeEmitter = new vscode.EventEmitter<void>();
     const decoder = new TextDecoder("utf-8");
-    let sub: { dispose(): void } | undefined, dims: vscode.TerminalDimensions | undefined;
+    let info: TerminalInfo | undefined;
+    // Output can arrive before openTerminal() has told us our id: keep it until then.
+    const early: { id: string; data: Uint8Array }[] = [];
+    const sub = rt.on("term-data", (m: { id: string; data: Uint8Array }) => {
+      if (!info) early.push(m);
+      else if (m.id === info.id) writeEmitter.fire(decoder.decode(m.data, { stream: true }));
+    });
 
     const pty: vscode.Pseudoterminal = {
       onDidWrite: writeEmitter.event,
-      open: async (initialDims) => {
-        dims = initialDims;
-        sub = vm.onPort(port, (bytes) => writeEmitter.fire(decoder.decode(bytes, { stream: true })));
-        if (vm.state !== "running") {
-          writeEmitter.fire(`\x1b[2mBooting Linux in your browser (v86)… attaching to /dev/${tty}\x1b[0m\r\n`);
+      onDidClose: closeEmitter.event,
+      open: async (dims) => {
+        if (!this.isRunning()) writeEmitter.fire(`\x1b[2mStarting Linux in your browser (v86)…\x1b[0m\r\n`);
+        try {
+          info = await rt.api.openTerminal({ rows: dims?.rows, cols: dims?.columns });
+        } catch (e) {
+          vscode.window.showWarningMessage((e as Error).message);
+          sub.dispose();
+          closeEmitter.fire();
+          return;
         }
-        await vm.ready;
-        if (dims) await vm.rpc({ cmd: "resize", tty, rows: dims.rows, cols: dims.columns });
-        vm.send(port, "\n"); // nudge the shell to print a fresh prompt
+        for (const m of early.splice(0)) if (m.id === info.id) writeEmitter.fire(decoder.decode(m.data, { stream: true }));
       },
-      handleInput: (data) => vm.send(port, data),
-      setDimensions: (d) => {
-        dims = d;
-        // A serial line has no window size; the agent sets it with stty
-        // (TIOCSWINSZ), and the kernel sends SIGWINCH to the foreground job.
-        if (vm.state === "running") vm.rpc({ cmd: "resize", tty, rows: d.rows, cols: d.columns });
-      },
+      handleInput: (data) => { if (info) rt.api.writeTerminal(info.id, data); },
+      // A serial line has no window size; the guest agent sets it (TIOCSWINSZ).
+      setDimensions: (d) => { if (info) rt.api.resizeTerminal(info.id, d.rows, d.columns); },
       close: () => {
-        sub?.dispose();
-        this.inUse.delete(port);
-        // Like closing an SSH session: SIGHUP everything on that tty; init respawns a shell.
-        vm.rpc({ cmd: "hangup", tty });
+        sub.dispose();
+        // Like closing an SSH session: the shell gets SIGHUP and the guest starts a fresh one.
+        if (info) rt.api.closeTerminal(info.id);
       },
     };
-    return { name: `Linux VM (${tty})`, pty, iconPath: new vscode.ThemeIcon("terminal-linux") };
+    return { name: "Linux VM", pty, iconPath: new vscode.ThemeIcon("terminal-linux") };
   }
 
   open() {
-    const opts = this.createPty();
-    if (!opts) return;
-    const t = vscode.window.createTerminal(opts);
+    const t = vscode.window.createTerminal(this.createPty());
     t.show();
     return t;
   }
 
   profileProvider(): vscode.TerminalProfileProvider {
-    return {
-      provideTerminalProfile: () => {
-        const opts = this.createPty();
-        return opts ? new vscode.TerminalProfile(opts) : undefined;
-      },
-    };
+    return { provideTerminalProfile: () => new vscode.TerminalProfile(this.createPty()) };
   }
 }

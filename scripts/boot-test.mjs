@@ -7,10 +7,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { attachFetchNetwork, loadTLS, writeGuestFile } from "../extension/src/net.ts";
-import { GUEST_CMDLINE } from "../extension/src/guest-config.ts";
-import { installBlobCache } from "../extension/src/blob-cache.ts";
-import { AgentClient, freshSeed, installAgent } from "../extension/src/agent-client.ts";
+import { attachFetchNetwork, loadTLS, writeGuestFile } from "../runtime/src/net.ts";
+import { GUEST_CMDLINE } from "../runtime/src/guest-config.ts";
+import { installBlobCache } from "../runtime/src/blob-cache.ts";
+import { AgentClient, freshSeed, installAgent } from "../runtime/src/agent-client.ts";
 import { target } from "./targets.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
@@ -80,7 +80,7 @@ function wire(emulator) {
 const vm = new V86({ ...devices, bzimage: { url: vmTarget.kernel }, cmdline: GUEST_CMDLINE,
   filesystem: { basefs: path.join(guest, "fs.json"), baseurl: path.join(guest, "rootfs") + "/" } });
 const tls = await loadTlsFile();
-/** Set when the emulator has loaded (before any check runs). @type {import("../extension/src/blob-cache.ts").BlobCacheStats} */
+/** Set when the emulator has loaded (before any check runs). @type {import("../runtime/src/blob-cache.ts").BlobCacheStats} */
 let cache = /** @type {any} */ (null);
 vm.add_listener("emulator-loaded", async () => {
   cache = installBlobCache(vm.fs9p, { maxBytes: 256 << 20 }); // as the extension does

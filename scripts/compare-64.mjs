@@ -12,8 +12,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { attachFetchNetwork, loadTLS, writeGuestFile } from "../extension/src/net.ts";
-import { GUEST_CMDLINE } from "../extension/src/guest-config.ts";
+import { attachFetchNetwork, loadTLS, writeGuestFile } from "../runtime/src/net.ts";
+import { GUEST_CMDLINE } from "../runtime/src/guest-config.ts";
 import { target } from "./targets.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");

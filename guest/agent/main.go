@@ -8,8 +8,8 @@
 //	← {"event":"ready","kernel":"6.18.0","agent":2}        once, at start
 //
 // Commands: ping, resize, hangup, exec, ports, refresh (see the handlers).
-// The extension writes this binary into the guest before boot
-// (extension/src/vm.ts), so it doesn't depend on the image; images still ship
+// The runtime writes this binary into the guest before boot
+// (runtime/src/vm.ts), so it doesn't depend on the image; images still ship
 // the shell agent (guest/vm-agent) as a fallback.
 //
 // Build: npm run agent (static, no cgo, for 386 and amd64).

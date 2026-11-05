@@ -1,9 +1,10 @@
 {
-  // Browser pages: the IDE host page (boot.ts, amd-config.ts, gate-relay.ts) and
-  // the network gate (gate/). Both run in a normal window with the DOM.
+  // Browser pages: the IDE host page (boot.ts, amd-config.ts, gate-relay.ts,
+  // runtime-host.ts), the runtime frame (runtime/), the lightweight frontend
+  // (lite/) and the network gate (gate/). All run in a normal window with the DOM.
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
     "lib": ["es2023", "dom", "dom.iterable"]
   },
-  "include": ["**/*.ts"]
+  "include": ["**/*.ts", "../types/**/*.d.ts"]
 }
