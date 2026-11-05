@@ -1,0 +1,13 @@
+{
+  "name": "@browser-vm/machines",
+  "version": "0.1.0",
+  "description": "The computer: emulator builds, PC firmware and Linux kernels, one per CPU architecture.",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./index.mjs"
+  },
+  "dependencies": {
+    "v86": "^0.5.472"
+  }
+}

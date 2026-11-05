@@ -1,0 +1,16 @@
+{
+  "name": "@browser-vm/gate-web",
+  "version": "0.1.0",
+  "description": "The browser gate: an app on its own origin holding the policy and an encrypted vault of secrets, a relay on the page, and the client the runtime sends guest requests to.",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./client": "./src/client.ts",
+    "./protocol": "./src/protocol.ts",
+    "./build": "./build.mjs"
+  },
+  "dependencies": {
+    "@browser-vm/gate-core": "*",
+    "@browser-vm/runtime": "*"
+  }
+}

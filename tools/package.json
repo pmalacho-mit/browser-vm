@@ -1,0 +1,20 @@
+{
+  "name": "@browser-vm/tools",
+  "version": "0.1.0",
+  "description": "Builds an app into one folder per origin, serves builds locally, and rebuilds on change.",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./app": "./lib/app.mjs"
+  },
+  "dependencies": {
+    "@browser-vm/gate-web": "*",
+    "@browser-vm/host": "*",
+    "@browser-vm/images": "*",
+    "@browser-vm/lite": "*",
+    "@browser-vm/machines": "*",
+    "@browser-vm/runtime": "*",
+    "@browser-vm/vscode": "*",
+    "esbuild": "^0.25.12"
+  }
+}

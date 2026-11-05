@@ -1,9 +1,9 @@
 // The VM runtime: one Linux VM and everything an editor needs from it, behind
 // one API that works the same in-process (Node, tests) and over the protocol
-// in rpc.ts (a frontend talking to the runtime worker, web/runtime/).
+// in rpc.ts (a surface talking to the runtime worker, host/runtime-frame/).
 //
-//   const rt = new Runtime();                 // or connect<Runtime>(endpoint).api
-//   await rt.boot({ assetBase, playground: "python-3.12" });
+//   const rt = new Runtime({ gate, assets });   // or connect<Runtime>(endpoint).api
+//   await rt.boot({ playground: "python-3.12" });
 //   await rt.write("/root/project/x.py", bytes);
 //   const t = await rt.openTerminal({ rows: 24, cols: 80 });  // data arrives as "term-data" events
 //   const r = await rt.exec(["python3", "x.py"]);
@@ -11,23 +11,20 @@
 // Events (emitted to every frontend): "state" VmState, "log" string,
 // "fs" FsChange[], "term-data" { id, data }, "notice" GateNotice,
 // "refused" { host }, "booted" BootResult.
-import type { GateNotice } from "../../types/gate-protocol.ts";
+import type { Gate, GateNotice } from "./gate.ts";
 import { LinuxVM, CONSOLE_PORTS, type VmState } from "./vm.ts";
 import { VmFs, type DirEntry, type FsChange, type SearchScope, type TextMatch, type TextQuery, type VmStat } from "./vmfs.ts";
 import type { AgentReply, AgentRequest, ExecResult } from "./agent-client.ts";
-import type { FetchLike } from "./net.ts";
 import { PreviewGateway } from "./preview.ts";
 import { portEndpoint, serve } from "./rpc.ts";
 
 export interface BootOptions {
-  /** URL of the VM assets (dist/extensions/linux-vm/vm). */
-  assetBase: string;
+  /** URL (or, under Node, path) of the VM folder. Default: the one the Runtime was made with. */
+  assetBase?: string;
   memoryMB?: number;
   extraCmdline?: string;
   fileCacheMB?: number;
   network?: "fetch" | "off";
-  /** BroadcastChannel name of the page's gate relay (web/gate-relay.ts). */
-  gateChannel?: string;
   /** Restore this playground (assetBase/playgrounds/<id>/) instead of booting the default image. */
   playground?: string;
 }
@@ -50,7 +47,16 @@ export interface TerminalInfo {
   tty: string;
 }
 
-/** A playground's manifest.json (see scripts/build-playgrounds.mjs). */
+/** A playground this build has (vm/playgrounds/index.json, written by tools/build.mjs). */
+export interface PlaygroundInfo {
+  id: string;
+  title: string;
+  description?: string;
+  memoryMB: number;
+  packages?: string[];
+}
+
+/** A playground's manifest.json (see images/builder/build-playgrounds.mjs). */
 interface PlaygroundManifest {
   title: string;
   memoryMB: number;
@@ -71,14 +77,19 @@ export class Runtime {
   private nextTerminal = 1;
   /** Set by serve() (or by an in-process user) to send events. */
   emit: (topic: string, data: unknown) => void = () => {};
-  private fetchImpl?: FetchLike;
+  private gate?: Gate;
+  private assets?: string;
 
   /**
-   * `fetch`: in-process hosts only (it can't cross the protocol). The guest's
-   * network goes through it instead of the page's gate (see mcp/server.ts).
+   * Set by whoever hosts the runtime (it can't cross the protocol):
+   * `gate`, the guest's only way out (gate.ts; none: no network), and
+   * `assets`, the VM folder (machine + images) when boot() names none.
+   * In a browser that's the runtime frame (host/runtime-frame/worker.ts);
+   * in Node, e.g. the MCP server (surfaces/mcp).
    */
-  constructor(o: { fetch?: FetchLike } = {}) {
-    this.fetchImpl = o.fetch;
+  constructor(o: { gate?: Gate; assets?: string } = {}) {
+    this.gate = o.gate;
+    this.assets = o.assets?.replace(/\/+$/, "");
   }
 
   // ---- lifecycle -----------------------------------------------------------
@@ -91,10 +102,12 @@ export class Runtime {
   }
 
   private async _boot(o: BootOptions): Promise<BootResult> {
+    const assetBase = o.assetBase?.replace(/\/+$/, "") ?? this.assets;
+    if (!assetBase) throw new Error("boot(): no assetBase, and the runtime was made without one");
     const result: BootResult = {};
     let snapshot: { url: string } | undefined, memoryMB = o.memoryMB ?? 512;
     if (o.playground) {
-      const base = `${o.assetBase}/playgrounds/${encodeURIComponent(o.playground)}`;
+      const base = `${assetBase}/playgrounds/${encodeURIComponent(o.playground)}`;
       const m = await fetch(`${base}/manifest.json`).then((r) => (r.ok ? r.json() as Promise<PlaygroundManifest> : undefined), () => undefined);
       if (m?.state) {
         snapshot = { url: `${base}/${m.state}` };
@@ -105,13 +118,12 @@ export class Runtime {
       }
     }
     const vm = this.vm = new LinuxVM({
-      assetBase: o.assetBase,
+      assetBase,
       memoryMB,
       extraCmdline: o.extraCmdline ?? "",
       fileCacheMB: o.fileCacheMB,
       network: o.network,
-      gateChannel: o.gateChannel,
-      fetchImpl: this.fetchImpl,
+      gate: this.gate,
       snapshot,
       log: (s) => this.emit("log", s),
       onNotice: (n: GateNotice) => this.emit("notice", n),
@@ -229,7 +241,7 @@ export class Runtime {
 
   /**
    * Serves a PreviewGateway for the guest's `port` on `endpoint` (a MessagePort
-   * the host page made for a preview origin; see web/runtime-host.ts). Not
+   * the host page made for a preview origin; see host/src/runtime-host.ts). Not
    * callable over the protocol (leading "_"): only the worker's owner can.
    */
   async _preview(port: number, endpoint: MessagePort) {
@@ -240,8 +252,17 @@ export class Runtime {
 
   // ---- the network gate --------------------------------------------------------
 
-  /** Shows the gate's card on the page (its settings open from there). */
-  showGate(text: string) { this.vm?.gate?.showUI(text); }
+  /** Shows the gate's own UI, if it has one (the web gate: a card on the page, settings from there). */
+  showGate(text: string) { this.gate?.show?.(text); }
+
+  // ---- what this build has -------------------------------------------------------
+
+  /** The playgrounds in the VM folder (empty if it has none). */
+  async playgrounds(o: { assetBase?: string } = {}): Promise<PlaygroundInfo[]> {
+    const base = o.assetBase?.replace(/\/+$/, "") ?? this.assets;
+    if (!base) return [];
+    return fetch(`${base}/playgrounds/index.json`).then((r) => (r.ok ? r.json() as Promise<PlaygroundInfo[]> : []), () => []);
+  }
 
   async destroy() {
     await this.vm?.destroy();

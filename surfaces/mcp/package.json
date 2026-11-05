@@ -1,0 +1,14 @@
+{
+  "name": "@browser-vm/mcp",
+  "version": "0.1.0",
+  "description": "An MCP server that gives AI agents a VM: it runs the runtime in Node, with the node gate.",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "browser-vm-mcp": "./server.ts"
+  },
+  "dependencies": {
+    "@browser-vm/gate-node": "*",
+    "@browser-vm/runtime": "*"
+  }
+}

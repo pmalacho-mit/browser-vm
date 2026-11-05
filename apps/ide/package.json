@@ -1,0 +1,10 @@
+{
+  "name": "@browser-vm/app-ide",
+  "version": "0.1.0",
+  "description": "The browser VM this repository deploys: VS Code at /, lite at /lite/, every playground, the web gate.",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "playwright": "^1.64.1"
+  }
+}

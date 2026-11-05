@@ -1,19 +1,21 @@
-# Builds the static site (dist/) and publishes it to GitHub Pages on every push to main.
+# Builds the ide app (apps/ide) and publishes its site to GitHub Pages on every push to main.
 #
 # One-time setup: Settings → Pages → Build and deployment → Source: "GitHub Actions".
 #
-# The site works from the Pages sub-path (https://<user>.github.io/<repo>/).
+# The build makes one folder per origin (dist/ide/site, gate, preview); Pages gets
+# site/. It works from the Pages sub-path (https://<user>.github.io/<repo>/).
 #
 # Network gate: the gate must be served on a SECOND origin (see README, "Deploying").
 # A single Pages site is one origin, so by default the VM boots with no network.
 # Note: every project site under one account (<user>.github.io/<repo>) is the SAME
 # origin, so a second repo's Pages site on github.io does not work as the gate.
-# To enable it, serve this same dist/ on a different HOST (a custom domain such as
-# gate.example.com, another static host, or a different account's github.io) and
-# set both repository variables (Settings → Secrets and variables → Actions → Variables):
+# To enable it, serve dist/ide/gate/ (uploaded below in the "gate-and-preview" artifact) on a
+# different HOST (a custom domain such as gate.example.com, another static host,
+# or a different account's github.io) and set both repository variables
+# (Settings → Secrets and variables → Actions → Variables):
 #   IDE_URL   e.g. https://pmalacho-mit.github.io/browser-vm/
-#   GATE_URL  e.g. https://gate.example.com/   (the dist/ root, with a trailing slash)
-# Set both or neither; scripts/build-site.mjs refuses one without the other.
+#   GATE_URL  e.g. https://gate.example.com/   (where gate/ is served, with a trailing slash)
+# Set both or neither; tools/build.mjs refuses one without the other.
 #
 # 64-bit VM: set the repository variable VM_ARCH to x86_64 to deploy the
 # experimental 64-bit VM instead of the default 32-bit one (see README).
@@ -48,22 +50,22 @@ jobs:
       - run: npm ci --no-audit --no-fund
 
       # Fast checks before publishing: types (~5 s), gate/vault unit tests (~2 s)
-      # and a headless boot of each guest image in Node (~15-20 s each, no network
-      # needed). Both VMs are checked, whichever one is deployed.
+      # and a headless boot of the base image on each machine in Node (~15-20 s
+      # each, no network needed). Both machines are checked, whichever one is deployed.
       - run: npm run typecheck
       - run: npm run test:gate
       - run: npm run test:boot
       - run: npm run test:boot:x86_64
 
-      # Playgrounds (playgrounds/*): built headlessly, about 2 minutes each, and
-      # cached until anything that goes into a snapshot changes. The 64-bit VM
-      # can't have playgrounds yet (no guest agent; see README).
+      # Playgrounds (images/playgrounds/*): built headlessly, about 2 minutes each,
+      # and cached until anything that goes into a snapshot changes. The 64-bit
+      # machine can't have playgrounds yet (no guest agent; see README).
       - name: Cache playgrounds
         if: vars.VM_ARCH != 'x86_64'
         uses: actions/cache@v4
         with:
           path: build/playgrounds
-          key: playgrounds-${{ hashFiles('playgrounds/**', 'guest/**', 'tools/**', 'scripts/build-playgrounds.mjs', 'scripts/targets.mjs', 'runtime/src/**', 'package-lock.json', 'tls/prebuilt/**', 'vendor/*.bin') }}
+          key: playgrounds-${{ hashFiles('images/**', 'machines/**', 'runtime/src/**', 'runtime/guest/**', 'runtime/tls/prebuilt/**', 'package-lock.json') }}
 
       - name: Build playgrounds
         if: vars.VM_ARCH != 'x86_64'
@@ -71,7 +73,7 @@ jobs:
           sudo apt-get install -y -qq python3-zstandard >/dev/null
           ls build/playgrounds/*/manifest.json >/dev/null 2>&1 || npm run playgrounds
 
-      - name: Build dist/
+      - name: Build dist/ide/
         run: npm run build
         env:
           IDE_URL: ${{ vars.IDE_URL }}
@@ -79,12 +81,12 @@ jobs:
           PREVIEW_URL: ${{ vars.PREVIEW_URL }}
           VM_ARCH: ${{ vars.VM_ARCH }}
 
-      # The runtime and MCP tests boot the built VM under Node (upstream v86 only).
+      # The runtime and MCP tests boot the built app's VM folder under Node (upstream v86 only).
       - name: Test the runtime and the MCP server
         if: vars.VM_ARCH != 'x86_64'
         run: npm run test:runtime && npm run test:mcp
 
-      # The built site in headless Chromium: VS Code, lite, the gate, previews.
+      # The built app in headless Chromium: VS Code, lite, the gate, previews.
       - name: Browser end-to-end tests
         run: |
           npx playwright install --with-deps chromium
@@ -94,7 +96,15 @@ jobs:
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: dist/ide/site
+
+      # The gate's and the previews' folders, for serving on their own origins.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gate-and-preview
+          path: |
+            dist/ide/gate
+            dist/ide/preview
 
   deploy:
     needs: build

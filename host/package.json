@@ -1,0 +1,14 @@
+{
+  "name": "@browser-vm/host",
+  "version": "0.1.0",
+  "description": "How a web page runs a VM: the network-locked runtime frame, the runtime host script, and preview origins.",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./build": "./build.mjs"
+  },
+  "dependencies": {
+    "@browser-vm/gate-web": "*",
+    "@browser-vm/runtime": "*"
+  }
+}

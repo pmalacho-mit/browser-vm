@@ -1,0 +1,24 @@
+{
+  // Node-side scripts in every package: builds (build.mjs parts, tools/),
+  // resolvers (machines/, images/), image builders and tests. They stay
+  // JavaScript (.mjs) and are type-checked (checkJs) against Node's types.
+  // Strict, except that unannotated parameters are allowed: wrong names, wrong
+  // arguments and misused APIs are errors; missing annotations in test helpers
+  // are not. Tests import browser code (the gate, the runtime's net.ts), hence "dom".
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["es2023", "dom"],
+    "types": ["node"],
+    "noImplicitAny": false
+  },
+  "include": [
+    "tools/**/*.mjs",
+    "machines/*.mjs", "machines/x86_64/*.mjs",
+    "images/*.mjs", "images/builder/*.mjs", "images/test/*.mjs",
+    "runtime/*.mjs", "runtime/test/*.mjs", "runtime/types/*.d.ts",
+    "gates/*/build.mjs", "gates/*/test/*.mjs",
+    "host/build.mjs",
+    "surfaces/*/build.mjs", "surfaces/*/test/*.mjs",
+    "apps/**/*.mjs"
+  ]
+}

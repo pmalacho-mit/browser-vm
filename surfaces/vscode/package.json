@@ -1,0 +1,17 @@
+{
+  "name": "@browser-vm/vscode",
+  "version": "0.1.0",
+  "description": "VS Code (Code-OSS, web) as a surface: the workbench page and a thin extension that maps the runtime to VS Code's APIs.",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./build": "./build.mjs"
+  },
+  "dependencies": {
+    "@browser-vm/runtime": "*",
+    "vscode-web": "^1.91.1"
+  },
+  "devDependencies": {
+    "@types/vscode": "1.91.0"
+  }
+}

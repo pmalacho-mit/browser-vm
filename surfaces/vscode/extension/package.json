@@ -1,0 +1,128 @@
+{
+  "name": "linux-vm",
+  "displayName": "Linux VM (v86)",
+  "description": "Boots a Linux VM inside the browser (v86, x86→WASM) and bridges its filesystem, consoles and search into VS Code.",
+  "publisher": "local",
+  "version": "0.1.0",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "browser": "./dist/extension.js",
+  "enabledApiProposals": [
+    "fileSearchProvider",
+    "textSearchProvider"
+  ],
+  "activationEvents": [
+    "onFileSystem:vmfs",
+    "onTerminalProfile:linuxVm.terminal",
+    "onSearch:vmfs",
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "terminal": {
+      "profiles": [
+        {
+          "id": "linuxVm.terminal",
+          "title": "Linux VM",
+          "icon": "terminal-linux"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "linuxVm.newTerminal",
+        "title": "New Terminal",
+        "category": "Linux VM",
+        "icon": "$(terminal-linux)"
+      },
+      {
+        "command": "linuxVm.preview",
+        "title": "Preview a Port…",
+        "category": "Linux VM"
+      },
+      {
+        "command": "linuxVm.openPlayground",
+        "title": "Open a Playground…",
+        "category": "Linux VM",
+        "icon": "$(beaker)"
+      },
+      {
+        "command": "linuxVm.showLog",
+        "title": "Show Boot Log",
+        "category": "Linux VM"
+      },
+      {
+        "command": "linuxVm.reboot",
+        "title": "Reboot (discard changes)",
+        "category": "Linux VM"
+      },
+      {
+        "command": "linuxVm.manageGate",
+        "title": "Manage Secrets & Network Access",
+        "category": "Linux VM",
+        "icon": "$(lock)"
+      }
+    ],
+    "configuration": {
+      "title": "Linux VM",
+      "properties": {
+        "linuxVm.memoryMB": {
+          "type": "number",
+          "default": 512,
+          "description": "Guest RAM in MiB (takes effect on reload).",
+          "scope": "machine"
+        },
+        "linuxVm.kernelCmdline": {
+          "type": "string",
+          "default": "",
+          "description": "Extra kernel command line arguments.",
+          "scope": "machine"
+        },
+        "linuxVm.fileCacheMB": {
+          "type": "number",
+          "default": 256,
+          "description": "Memory for cached file contents from the VM's image, in MiB. Files stay cached after programs close them, so running a program again needs no download (takes effect on reload).",
+          "scope": "machine"
+        },
+        "linuxVm.openTerminalOnStartup": {
+          "type": "boolean",
+          "default": true,
+          "scope": "machine"
+        },
+        "linuxVm.network": {
+          "type": "string",
+          "enum": [
+            "fetch",
+            "off"
+          ],
+          "default": "fetch",
+          "enumDescriptions": [
+            "HTTP/HTTPS from the VM via the browser's fetch() (CORS rules apply)",
+            "No network device"
+          ],
+          "description": "Guest networking (takes effect on reload).",
+          "scope": "machine"
+        },
+        "linuxVm.runtimeChannel": {
+          "type": "string",
+          "default": "",
+          "description": "Set by the host page: BroadcastChannel name of the VM runtime.",
+          "scope": "machine"
+        },
+        "linuxVm.previewUrl": {
+          "type": "string",
+          "default": "",
+          "description": "Set by the host page: where previews of servers in the VM open, with {port} for the port. Empty: this site has no preview origin.",
+          "scope": "machine"
+        },
+        "linuxVm.playground": {
+          "type": "string",
+          "default": "",
+          "description": "Set by the host page from ?playground=<id>: start that playground (a snapshot) instead of booting the default image.",
+          "scope": "machine"
+        }
+      }
+    }
+  }
+}

@@ -1,4 +1,4 @@
-// The way into a server running in the guest, for previews (web/__vm_preview__/).
+// The way into a server running in the guest, for previews (host/preview/).
 // Each gateway serves one guest port: HTTP requests (one TCP connection each,
 // "Connection: close") and raw TCP sockets (for WebSockets, which the preview
 // page speaks itself). Connections start at v86's fake router (192.168.86.1),
@@ -6,6 +6,7 @@
 //
 // It is served to the preview origin over a MessagePort of its own, never the
 // runtime's full API: a previewed app can reach its own server and nothing else.
+/// <reference path="../types/v86-internals.d.ts" />
 import type { V86TcpConnection } from "v86";
 import type { LinuxVM } from "./vm.ts";
 

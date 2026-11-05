@@ -1,0 +1,7 @@
+{
+  // The browser host: the runtime host script (on the app's pages), the runtime
+  // frame and its worker, and the preview origins' page and service worker.
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": { "lib": ["es2023", "dom", "dom.iterable"] },
+  "include": ["src/**/*.ts", "runtime-frame/**/*.ts", "preview/**/*.ts", "types/*.d.ts"]
+}

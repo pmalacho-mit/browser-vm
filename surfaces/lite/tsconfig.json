@@ -1,0 +1,6 @@
+{
+  // The lite surface: one page, with the host's page globals.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "lib": ["es2023", "dom", "dom.iterable"] },
+  "include": ["src/**/*.ts", "../../host/types/*.d.ts"]
+}

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<!--
+  The lightweight frontend: a file tree, an editor (CodeMirror) and a terminal
+  (xterm.js) on the same VM runtime the VS Code page uses. About 1 MB of
+  JavaScript instead of VS Code's ~20 MB, and an example of bringing your own
+  editor: everything below talks to the runtime through its protocol
+  (runtime/src/runtime.ts), nothing else.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>{{title}}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="lite.css"><!-- xterm.js's styles, bundled by esbuild -->
+  <style>
+    /* Layout: a header strip over a three-pane workspace (tree | editor, terminal below). */
+    :root {
+      --bg: #16181d;
+      --panel: #1c1f26;
+      --line: #2a2f3a;
+      --text: #d4d7de;
+      --muted: #8a91a0;
+      --accent: #5fb3a1;
+      --warn: #d9a54c;
+      --ui: system-ui, -apple-system, "Segoe UI", sans-serif;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      color-scheme: dark;
+    }
+    html, body { height: 100%; margin: 0; background: var(--bg); color: var(--text); font: 13px/1.4 var(--ui); }
+    body { display: grid; grid-template-rows: auto 1fr; }
+    header {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      padding: 6px max(12px, env(safe-area-inset-right, 0px)) 6px max(12px, env(safe-area-inset-left, 0px));
+      border-bottom: 1px solid var(--line); background: var(--panel);
+    }
+    header h1 { font-size: 13px; font-weight: 600; margin: 0; letter-spacing: .02em; }
+    header .where { color: var(--muted); font-family: var(--mono); font-size: 12px; }
+    header .spacer { flex: 1; }
+    header a { color: var(--accent); text-decoration: none; }
+    header a:hover, header a:focus-visible { text-decoration: underline; }
+    .pill { font-family: var(--mono); font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+    .pill[data-state="running"] { color: var(--accent); border-color: var(--accent); }
+    .pill[data-state="booting"], .pill[data-state="starting"] { color: var(--warn); border-color: var(--warn); }
+    main { display: grid; grid-template-columns: 220px 1fr; grid-template-rows: 1fr 40%; min-height: 0; }
+    main.previewing { grid-template-columns: 220px 1fr 1fr; }
+    #ports { display: flex; gap: 6px; flex-wrap: wrap; }
+    #ports button {
+      font: 11px var(--mono); color: var(--accent); background: none; border: 1px solid var(--line);
+      border-radius: 999px; padding: 2px 8px; cursor: pointer;
+    }
+    #ports button:hover, #ports button:focus-visible { border-color: var(--accent); outline: none; }
+    #preview { grid-row: 1 / 3; grid-column: 3; display: grid; grid-template-rows: auto 1fr; border-left: 1px solid var(--line); min-width: 0; }
+    #preview-bar { display: flex; align-items: center; gap: 8px; padding: 4px 10px; border-bottom: 1px solid var(--line); font: 12px var(--mono); color: var(--muted); }
+    #preview-bar button { all: unset; cursor: pointer; color: var(--muted); padding: 0 4px; }
+    #preview-bar button:hover, #preview-bar button:focus-visible { color: var(--text); }
+    #preview-bar .spacer { flex: 1; }
+    #preview iframe { border: 0; width: 100%; height: 100%; background: #fff; }
+    #tree { grid-row: 1 / 3; overflow: auto; border-right: 1px solid var(--line); padding-block: 6px; font-family: var(--mono); font-size: 12px; }
+    #tree ul { list-style: none; margin: 0; padding-left: 12px; }
+    #tree > ul { padding-left: 4px; }
+    #tree button {
+      all: unset; box-sizing: border-box; display: block; width: 100%; padding: 2px 6px; border-radius: 3px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;
+    }
+    #tree button:hover { background: var(--line); }
+    #tree button:focus-visible { outline: 1px solid var(--accent); }
+    #tree button[aria-current="true"] { background: var(--line); color: #fff; }
+    #tree .dir::before { content: "▸ "; color: var(--muted); }
+    #tree .dir[aria-expanded="true"]::before { content: "▾ "; }
+    #tree .file::before { content: "  "; white-space: pre; }
+    #editor-pane { display: grid; grid-template-rows: auto 1fr; min-height: 0; min-width: 0; }
+    #tabbar { display: flex; align-items: center; gap: 8px; padding: 4px 10px; border-bottom: 1px solid var(--line); font-family: var(--mono); font-size: 12px; color: var(--muted); min-height: 20px; }
+    #tabbar .dirty { color: var(--warn); }
+    #tabbar .hint { margin-left: auto; }
+    #editor { min-height: 0; overflow: hidden; }
+    #editor .cm-editor { height: 100%; }
+    #editor .empty { padding: 24px; color: var(--muted); }
+    #terminal { border-top: 1px solid var(--line); padding: 4px 0 0 6px; min-height: 0; min-width: 0; background: #000; }
+    @media (max-width: 640px) {
+      main, main.previewing { grid-template-columns: 1fr; grid-template-rows: 25% 1fr 35%; }
+      main.previewing { grid-template-rows: 20% 1fr 40% 30%; }
+      #tree { grid-row: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+      #preview { grid-row: auto; grid-column: auto; border-left: 0; border-top: 1px solid var(--line); }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Browser VM <span class="where">lite</span></h1>
+    <span class="where" id="title"></span>
+    <span class="pill" id="state" data-state="starting">starting</span>
+    <span id="ports" aria-label="Servers in the VM"></span>
+    <span class="spacer"></span>
+    <a id="full" href="#">Open in VS Code</a>
+  </header>
+  <main>
+    <nav id="tree" aria-label="Files in /root/project"></nav>
+    <section id="editor-pane">
+      <div id="tabbar"><span id="path">no file open</span><span class="dirty" id="dirty" hidden>● unsaved</span><span class="hint">Ctrl+S saves</span></div>
+      <div id="editor"><p class="empty">Pick a file on the left. Files you save here are the files the guest sees.</p></div>
+    </section>
+    <section id="terminal" aria-label="Terminal (ttyS0)"></section>
+    <section id="preview" aria-label="Preview" hidden>
+      <div id="preview-bar"><span id="preview-title"></span><span class="spacer"></span>
+        <button id="preview-reload" title="Reload the preview">reload</button><button id="preview-close" title="Close the preview">close</button></div>
+      <iframe id="preview-frame" title="Preview of a server in the VM"></iframe>
+    </section>
+  </main>
+  <!-- The host ({{site}}: the path to the app's site root, filled in by build.mjs). -->
+  <script src="{{site}}site.js"></script>
+  <script src="{{site}}host/gate-relay.js"></script>
+  <script src="{{site}}host/runtime-host.js"></script>
+  <script src="lite.js"></script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+{
+  // The policy engine: plain functions, no I/O. It uses only what every
+  // JavaScript host has (URL, TextEncoder), so it's checked against a worker's globals.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "lib": ["es2023", "webworker"] },
+  "include": ["src/**/*.ts"]
+}

@@ -1,0 +1,9 @@
+{
+  // The MCP server: Node, hosting the runtime in-process with the node gate.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["es2023", "dom", "dom.iterable"],
+    "types": ["node"]
+  },
+  "include": ["*.ts"]
+}

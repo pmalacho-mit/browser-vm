@@ -1,0 +1,18 @@
+<!doctype html>
+<!--
+  The VM runtime's home: a hidden, same-origin iframe that starts the runtime
+  worker (worker.ts). Its CSP lets nothing here reach the network
+  except this site: the worker inherits it (it is started from a blob), so the
+  VM's traffic can only go through the network gate (a BroadcastChannel to the
+  page's gate relay). 'wasm-unsafe-eval' is for v86 and tls.wasm.
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' blob: 'wasm-unsafe-eval'; worker-src 'self' blob:; connect-src 'self'">
+<title>VM runtime</title>
+</head>
+<body>
+<script src="frame.js"></script>
+</body>
+</html>

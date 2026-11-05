@@ -1,0 +1,10 @@
+{
+  // The VS Code extension. It runs in the workbench's web-worker extension host,
+  // so it gets WebWorker globals, not the DOM.
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["es2023", "webworker"],
+    "types": ["vscode"]
+  },
+  "include": ["src/**/*.ts", "types/**/*.d.ts"]
+}

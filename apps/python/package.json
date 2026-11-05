@@ -1,0 +1,10 @@
+{
+  "name": "@browser-vm/app-python",
+  "version": "0.1.0",
+  "description": "A small browser VM: the lite surface, starting in the Python playground.",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "playwright": "^1.64.1"
+  }
+}

@@ -13,7 +13,7 @@ sudo apt-get install -y -qq --no-install-recommends \
   build-essential flex bison bc lz4 python3 python3-pip \
   >/dev/null
 # On ARM hosts (an M1 Mac's colima/desolate), the guest kernel is cross-compiled
-# (guest/build-kernel.sh picks these up).
+# (machines/kernel/build.sh picks these up).
 case "$(dpkg --print-architecture)" in
   amd64|i386) ;;
   *) sudo apt-get install -y -qq --no-install-recommends gcc-i686-linux-gnu gcc-x86-64-linux-gnu >/dev/null ;;
@@ -34,15 +34,16 @@ npm run build
 cat <<'EOF'
 
 Ready. Common commands:
-  npm start            serve dist/ on :8080, then open http://localhost:8080 (not 127.0.0.1)
-  npm run test:boot    boot the VM headlessly in Node (consoles, 9p, network)
+  npm start            serve dist/ide on :8080, then open http://localhost:8080 (not 127.0.0.1)
+  npm run build -- python    build another app (apps/python); see ARCHITECTURE.md
+  npm run test:boot    boot the base image headlessly in Node (consoles, 9p, network)
   npm run test:gate    unit tests for the network gate and vault
   npm run profile:boot boot timeline + snapshot size/restore time
-  npm run tls          rebuild tls/prebuilt → build/tls/tls.wasm (Go)
-  npm run kernel       rebuild the guest kernel (first run clones Linux, ~2 GB)
-  npm run guest        rebuild the guest image from guest/Dockerfile (Docker)
-  npm run agent        rebuild the guest agent (guest/agent, Go)
-  npm run build:x86_64 / dev:x86_64 / test:boot:x86_64 / kernel:x86_64 / guest:x86_64
-                       the same, with the experimental 64-bit VM
-Rebuild the site (npm run build) after any of the last three.
+  npm run tls          rebuild runtime/tls → build/tls/tls.wasm (Go)
+  npm run kernel       rebuild the machine's kernel (first run clones Linux, ~2 GB)
+  npm run image        rebuild the base image from images/base/Dockerfile (Docker)
+  npm run agent        rebuild the guest agent (runtime/guest/agent, Go)
+  npm run build:x86_64 / dev:x86_64 / test:boot:x86_64 / kernel:x86_64 / image:x86_64
+                       the same, on the experimental 64-bit machine
+Rebuild the app (npm run build) after any of the last four.
 EOF

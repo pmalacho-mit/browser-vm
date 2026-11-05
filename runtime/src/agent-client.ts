@@ -1,9 +1,9 @@
 // Talks to the guest's control-plane agent (/sbin/vm-agent on ttyS1).
 //
 // Two agents exist:
-//   - guest/agent (Go, JSON lines): written into the guest by the extension
+//   - runtime/guest/agent (Go, JSON lines): written into the guest by the runtime
 //     before boot. Supports every command below.
-//   - guest/vm-agent (shell, "<id> <cmd> args" lines): shipped inside images as
+//   - runtime/guest/vm-agent (shell, "<id> <cmd> args" lines): shipped inside images as
 //     a fallback. Supports ping, resize and hangup only.
 // The client detects which one answered from its ready line. No VS Code or
 // browser dependencies, so the Node scripts use it too.

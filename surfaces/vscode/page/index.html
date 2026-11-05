@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<!--
+  The VS Code surface's page. Everything below runs in the visitor's browser;
+  the server only hands out static files. Three things happen here:
+    1. include the host (the VM runtime and the network gate's relay)
+    2. load the VS Code web workbench (Code-OSS, MIT) from ./vscode/, opening
+       the folder vmfs:/root/project (a FileSystemProvider scheme)
+    3. register our extension (./extensions/linux-vm) as a *built-in* web
+       extension, so it is always present and can use proposed APIs
+  {{site}} and {{title}} are filled in by build.mjs: the path to the app's site
+  root from this page, and the app's title.
+-->
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>{{title}}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">
+  <link rel="icon" href="vscode/favicon.ico" type="image/x-icon" />
+  <link data-name="vs/workbench/workbench.web.main" rel="stylesheet" href="vscode/out/vs/workbench/workbench.web.main.css">
+  <style>html, body { background: #1f1f1f; margin: 0; height: 100%; }</style>
+</head>
+<body aria-label="">
+<!-- The host: the app's config, the network gate's relay (the gate runs on its
+     own origin), then the VM itself (a worker in a hidden, network-locked frame). -->
+<script src="{{site}}site.js"></script>
+<script src="{{site}}host/gate-relay.js"></script>
+<script src="{{site}}host/runtime-host.js"></script>
+<!-- Workbench options (page/boot.ts): deployment settings such as WEBVIEW_HOST live there. -->
+<script src="boot.js"></script>
+<script src="vscode/out/vs/loader.js"></script>
+<script src="vscode/out/vs/webPackagePaths.js"></script>
+<script src="amd-config.js"></script><!-- page/amd-config.ts -->
+<script src="vscode/out/vs/workbench/workbench.web.main.nls.js"></script>
+<script src="vscode/out/vs/workbench/workbench.web.main.js"></script>
+<script src="vscode/out/vs/code/browser/workbench/workbench.js"></script>
+</body>
+</html>

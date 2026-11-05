@@ -1,10 +1,10 @@
-// Development container for browser-linux-ide.
+// Development container for browser-vm.
 //
 // Everything the npm scripts need:
 //   npm run build / start / test:*   Node 22
-//   npm run tls                      Go (tls/main.go → tls.wasm)
+//   npm run tls / agent              Go (runtime/tls/main.go → tls.wasm; runtime/guest/agent)
 //   npm run kernel                   gcc, make, flex, bison, bc, lz4 (builds natively, no Docker)
-//   npm run guest                    Docker (docker build/export of guest/Dockerfile)
+//   npm run image                    Docker (docker build/export of images/base/Dockerfile)
 //   browser testing                  Playwright + headless Chromium
 //
 // Uses "image" + features rather than a Dockerfile, so it also works in
@@ -15,7 +15,7 @@
 
   "features": {
     "ghcr.io/devcontainers/features/go:1": { "version": "1.24" },
-    // `npm run guest` only needs a Docker daemon to build and export the guest image.
+    // `npm run image` only needs a Docker daemon to build and export the base image.
     // Outside-of-docker uses the daemon you give the container (host or sandboxed);
     // swap in "docker-in-docker:2" if you'd rather have a private one.
     "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
@@ -58,8 +58,8 @@
         "search.exclude": { 
           "**/build": true, 
           "**/dist": true, 
-          "guest/prebuilt/guest/rootfs": true, 
-          "tls/prebuilt": true
+          "images/base/prebuilt/*/rootfs": true, 
+          "runtime/tls/prebuilt": true
         },
         "prettier.htmlWhitespaceSensitivity": "ignore",
         "[html]": {

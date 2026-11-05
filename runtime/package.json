@@ -1,0 +1,17 @@
+{
+  "name": "@browser-vm/runtime",
+  "version": "0.1.0",
+  "description": "Runs one machine with one image and serves the Runtime API: files, search, terminals, exec, ports, previews. Includes the guest half (vm-init, agent) and the guest's network stack.",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./rpc": "./src/rpc.ts",
+    "./preview": "./src/preview.ts",
+    "./assets": "./assets.mjs",
+    "./internals/*": "./src/*.ts"
+  },
+  "dependencies": {
+    "v86": "^0.5.472"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "@browser-vm/images",
+  "version": "0.1.0",
+  "description": "What's on the computer's disk: the base image (a Dockerfile) and playgrounds (snapshots), and their builders.",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./index.mjs"
+  },
+  "dependencies": {
+    "@browser-vm/machines": "*",
+    "@browser-vm/runtime": "*"
+  }
+}

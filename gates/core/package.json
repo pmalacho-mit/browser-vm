@@ -1,0 +1,10 @@
+{
+  "name": "@browser-vm/gate-core",
+  "version": "0.1.0",
+  "description": "The network policy engine every gate uses: site rules, secret placeholders, scrubbing. No I/O.",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

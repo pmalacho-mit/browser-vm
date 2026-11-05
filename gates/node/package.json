@@ -1,0 +1,14 @@
+{
+  "name": "@browser-vm/gate-node",
+  "version": "0.1.0",
+  "description": "A gate for hosts that run the runtime in-process (the MCP server, tests): the core policy, no secrets.",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@browser-vm/gate-core": "*",
+    "@browser-vm/runtime": "*"
+  }
+}

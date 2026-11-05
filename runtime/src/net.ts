@@ -16,12 +16,12 @@
 // The limits are the browser's, not ours: the target must allow cross-origin
 // requests (CORS), cookies are never sent, and only HTTP(S) is possible.
 import type { V86, V86Filesystem } from "v86";
-import { makeGo } from "../../vendor/go/wasm_exec.mjs";
+import { makeGo } from "../tls/wasm_exec.mjs";
 
 // ---------------------------------------------------------------------------
 // tls.wasm loader
 
-/** What tls.wasm exports (see tls/main.go). */
+/** What tls.wasm exports (see runtime/tls/main.go). */
 export interface TlsTerminator {
   /** This tab's CA certificate, to be trusted by the guest. */
   caPEM: string;
@@ -68,7 +68,7 @@ export type GuestError = Error & { guestMessage?: string; code?: string };
 
 /** Loads the TLS terminator. */
 export async function loadTLS(wasmUrl: string, fetchImpl: (url: string) => Promise<Response> = fetch): Promise<TlsTerminator> {
-  // Run Go's runtime against a private global object (see vendor/go/wasm_exec.mjs).
+  // Run Go's runtime against a private global object (see runtime/tls/wasm_exec.mjs).
   const local: Record<string | symbol, any> = {};
   const g = new Proxy(globalThis, {
     get: (t, k) => (k in local ? local[k] : Reflect.get(t, k)),
@@ -230,7 +230,7 @@ export class HttpSession {
 
     if (req.method === "CONNECT") return this._respondText(req, 405, "This network has no proxy; connect directly.\n");
 
-    // All request headers go on; the gate decides what is forwarded (web/gate/core.ts).
+    // All request headers go on; the gate decides what is forwarded (gates/core).
     const headers = req.headers.filter(([k]) => k !== "host");
     const target = url.href;
 

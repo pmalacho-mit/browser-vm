@@ -4,12 +4,15 @@
 //   - agent     : the control plane, /sbin/vm-agent on ttyS1 (agent-client.ts)
 //
 // It either boots the kernel (cold boot) or restores a snapshot, e.g. a
-// playground (scripts/build-playgrounds.mjs), and then brings the restored VM
-// up to date with this tab (agent "refresh": clock, randomness, CA).
+// playground (images/builder/), and then brings the restored VM up to date
+// with this tab (agent "refresh": clock, randomness, CA).
+//
+// The guest's network goes through the Gate it is given (gate.ts), and nowhere else.
+/// <reference path="../types/v86-internals.d.ts" />
+/// <reference path="../types/build-defines.d.ts" />
 import { V86, type V86Filesystem } from "v86";
-import type { GateNotice } from "../../types/gate-protocol.ts";
+import type { Gate, GateNotice, SecretPlaceholder } from "./gate.ts";
 import { attachFetchNetwork, loadTLS, writeGuestFile, type FetchLike, type GuestError } from "./net.ts";
-import { GateClient } from "./gate-client.ts";
 import { installBlobCache, type BlobCacheStats } from "./blob-cache.ts";
 import { DEFAULT_FILE_CACHE_MB, GUEST_CMDLINE, QUIET_LOGLEVEL } from "./guest-config.ts";
 import { AgentClient, freshSeed, installAgent, type AgentReply, type AgentRequest, type ExecResult } from "./agent-client.ts";
@@ -20,7 +23,7 @@ const AGENT_PORT = 1;
 export type VmState = "starting" | "booting" | "running";
 
 export interface LinuxVMOptions {
-  /** URL of the folder holding v86.wasm, the BIOS, bzImage, fs.json, rootfs/ and tls.wasm. */
+  /** URL of the VM folder: the machine (v86.wasm, BIOS, bzImage), the image (fs.json, rootfs/) and tls.wasm. */
   assetBase: string;
   memoryMB: number;
   extraCmdline: string;
@@ -28,13 +31,8 @@ export interface LinuxVMOptions {
   fileCacheMB?: number;
   log: (s: string) => void;
   network?: "fetch" | "off";
-  /** BroadcastChannel name of the gate relay on the host page (web/gate-relay.ts). */
-  gateChannel?: string;
-  /**
-   * The guest's way out, instead of the page's gate: for hosts without one
-   * (the MCP server under Node applies the gate's policy itself, mcp/server.ts).
-   */
-  fetchImpl?: FetchLike;
+  /** The guest's only way out (gate.ts). None: the guest has no network. */
+  gate?: Gate;
   /** A request needed a secret while the gate was locked. */
   onRefused?: (host: string, code: "locked") => void;
   onNotice?: (n: GateNotice) => void;
@@ -52,7 +50,6 @@ export class LinuxVM {
   opts: LinuxVMOptions;
   emulator!: V86;
   fs!: V86Filesystem;
-  gate?: GateClient;
   /** File-content cache counters (see blob-cache.ts), once the emulator has loaded. */
   blobCache?: BlobCacheStats;
   listeners = new Map<number, Set<PortListener>>();
@@ -86,12 +83,14 @@ export class LinuxVM {
     const t0 = Date.now();
     const net = (this.opts.network ?? "fetch") === "fetch";
     const snapshot = this.opts.snapshot;
-    const arch = typeof __VM_ARCH__ !== "undefined" ? __VM_ARCH__ : "i686"; // set by the build (scripts/targets.mjs)
+    // Set by the build (tools/, from machines/index.mjs); unbundled (Node), the default machine.
+    const machine = typeof __VM_MACHINE__ !== "undefined" ? __VM_MACHINE__ : { arch: "i686", agent: true };
+    const arch = machine.arch;
     this.opts.log(`[vm] ${snapshot ? `restoring ${snapshot.url}` : "booting"} (${arch}): ${memoryMB} MiB RAM, network ${net ? "fetch()" : "off"}, assets from ${base}`);
-    // The Go agent (guest/agent), written into the guest before a cold boot.
-    // A snapshot already has its agent running, so it isn't needed then.
-    // The 64-bit build ships none (Go programs abort on the v86_64 fork; scripts/targets.mjs).
-    const agentP = snapshot || arch === "x86_64" ? null : fetch(`${base}/vm-agent`)
+    // The Go agent (runtime/guest/agent), written into the guest before a cold boot.
+    // A snapshot already has its agent running, so it isn't needed then. A machine
+    // that can't run Go programs ships none (machines/index.mjs, `runsGo`).
+    const agentP = snapshot || !machine.agent ? null : fetch(`${base}/vm-agent`)
       .then(async (r) => (r.ok ? new Uint8Array(await r.arrayBuffer()) : null))
       .catch(() => null);
     // The TLS terminator downloads in parallel with the rest of the VM.
@@ -150,7 +149,7 @@ export class LinuxVM {
       if (net) {
         const tls = await tlsP;
         if (tls) await writeGuestFile(this.fs, "/etc/ssl/certs/browser-vm-ca.pem", new TextEncoder().encode(tls.caPEM));
-        attachFetchNetwork(this.emulator, { tls, log: this.opts.log, fetchImpl: this._gateFetch() });
+        attachFetchNetwork(this.emulator, { tls, log: this.opts.log, fetchImpl: this._guestFetch() });
         this.opts.log(`[net] fetch() network ready${tls ? " (HTTP + HTTPS)" : " (HTTP only)"} after ${Date.now() - t0} ms`);
       }
       this.emulator.run();
@@ -174,7 +173,7 @@ export class LinuxVM {
    * pool, and the CA of the tab that built it. The agent fixes all three.
    */
   async _afterRestore(t0: number) {
-    this.agent.assume(2); // snapshots are built with the Go agent (scripts/build-playgrounds.mjs)
+    this.agent.assume(2); // snapshots are built with the Go agent (images/builder/build-playgrounds.mjs)
     const r = await Promise.race([
       this.agent.request({ cmd: "refresh", seed: freshSeed(), timeMs: Date.now() }),
       new Promise<AgentReply>((res) => setTimeout(() => res({ ok: false, error: "no answer in 10 s" }), 10_000)),
@@ -208,27 +207,28 @@ export class LinuxVM {
     });
   }
 
-  /** All guest traffic goes through the network gate (web/gate/), which also owns the secrets. */
-  _gateFetch(): FetchLike {
-    if (this.opts.fetchImpl) return this.opts.fetchImpl;
-    if (!this.opts.gateChannel) return () => Promise.reject(Object.assign(new Error("no network gate"), { guestMessage: "This page has no network gate.\n" }));
-    const gate = this.gate = new GateClient({
-      channelName: this.opts.gateChannel,
-      onNotice: (n) => this.opts.onNotice?.(n),
-      // Secret NAMES only (never values): exported in the guest so code can use them.
-      onSecrets: (list) => {
-        const sh = "# Written by the IDE from the network gate's secret list. These are PLACEHOLDERS:\n" +
-          "# the gate substitutes real values on the way out, only toward each secret's hosts.\n" +
-          list.map(({ name, env }) => `export ${env}='${name}'`).join("\n") + "\n";
-        writeGuestFile(this.fs, "/etc/profile.d/gate-secrets.sh", new TextEncoder().encode(sh))
-          .then(() => this.opts.log(`[gate] secrets available in the VM: ${list.map((x) => "$" + x.env).join(" ") || "none"}`))
-          .catch((e) => this.opts.log(`[gate] could not write secret placeholders: ${e.message}`));
-      },
+  /** Every guest request goes to the gate (gate.ts); without one, each is refused. */
+  _guestFetch(): FetchLike {
+    const gate = this.opts.gate;
+    if (!gate) return () => Promise.reject(Object.assign(new Error("no network gate"), { guestMessage: "This VM has no network gate, so it has no network.\n" }));
+    gate.connect?.({
+      notice: (n) => this.opts.onNotice?.(n),
+      secrets: (list) => this._writeSecretPlaceholders(list),
     });
     return async (url, init) => {
       try { return await gate.fetch(url, init); }
       catch (e) { if ((e as GuestError).code === "locked") this.opts.onRefused?.(new URL(url).hostname, "locked"); throw e; }
     };
+  }
+
+  /** Secret NAMES only (never values): exported in the guest's shells so code can use them. */
+  _writeSecretPlaceholders(list: SecretPlaceholder[]) {
+    const sh = "# Written by the runtime from the network gate's secret list. These are PLACEHOLDERS:\n" +
+      "# the gate substitutes real values on the way out, only toward each secret's hosts.\n" +
+      list.map(({ name, env }) => `export ${env}='${name}'`).join("\n") + "\n";
+    writeGuestFile(this.fs, "/etc/profile.d/gate-secrets.sh", new TextEncoder().encode(sh))
+      .then(() => this.opts.log(`[gate] secrets available in the VM: ${list.map((x) => "$" + x.env).join(" ") || "none"}`))
+      .catch((e) => this.opts.log(`[gate] could not write secret placeholders: ${e.message}`));
   }
 
   _setState(s: VmState) { this.state = s; this.onState(s); }

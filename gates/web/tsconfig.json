@@ -1,0 +1,8 @@
+{
+  // The web gate: the app on its own origin (app/), the page-side relay and the
+  // runtime-side client (src/). The app and relay run in windows; the client in
+  // the runtime worker, which only uses what windows also have.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "lib": ["es2023", "dom", "dom.iterable"] },
+  "include": ["app/**/*.ts", "src/**/*.ts", "../../host/types/*.d.ts"]
+}

@@ -1,0 +1,6 @@
+{
+  // The node gate: runs wherever the runtime runs in-process (Node).
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "lib": ["es2023", "webworker"] },
+  "include": ["src/**/*.ts"]
+}

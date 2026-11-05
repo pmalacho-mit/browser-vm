@@ -1,0 +1,6 @@
+{
+  // The workbench page's own scripts (boot.ts, amd-config.ts): a window, with the host's page globals.
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": { "lib": ["es2023", "dom", "dom.iterable"] },
+  "include": ["*.ts", "../../../host/types/*.d.ts"]
+}

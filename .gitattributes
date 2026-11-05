@@ -2,6 +2,6 @@
 *.wasm   binary
 *.bin    binary
 bzImage  binary
-guest/prebuilt/agent/* binary
+runtime/guest/prebuilt/* binary
 # minified build output: don't try to diff it
-vendor/v86_64/libv86.mjs -diff
+machines/x86_64/emulator/libv86.mjs -diff
