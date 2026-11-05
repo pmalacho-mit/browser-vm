@@ -7,7 +7,7 @@ WebAssembly, PC firmware, and a Linux kernel built for that emulator. Images
 | Machine | Emulator | Kernel | Go programs |
 |---|---|---|---|
 | `i686` (default) | upstream [v86](https://github.com/copy/v86), from npm (BSD-2) | `common.config` + `i686/kernel.config` | yes |
-| `x86_64` (experimental) | the [v86_64](https://github.com/pmalacho-mit/v86_64) fork, vendored in `x86_64/emulator/` | `common.config` + `x86_64/kernel.config` | no (see below) |
+| `x86_64` (experimental) | the [v86_64](https://github.com/pmalacho-mit/v86_64) fork, vendored in `x86_64/emulator/` | `common.config` + `x86_64/kernel.config` | yes |
 
 ```
 machines/
@@ -84,12 +84,11 @@ in 1.4 s); the 32-bit kernel can't execute it. `npm run compare:vm` and
 and run the benchmarks; give it a `libv86.mjs`, `v86.wasm`, kernel and image to
 try any other emulator build.
 
-**Known gaps.** Go programs abort on the fork ("sysMemStat overflow": its
-interpreter's 64-bit `XADD` and `CMPXCHG` aren't restartable after a page
-fault), so `runsGo` is false: the machine gets no Go agent and uses the image's
-shell agent. Terminals, files, networking and snapshot restore work; `exec`,
-`ports` and the after-restore `refresh` don't, and there are no 64-bit
-playgrounds, because building and restoring them needs the Go agent.
+**Known gaps.** One CPU, guest RAM below 4 GiB, no AVX. Go programs used to
+abort ("sysMemStat overflow": the fork's 64-bit `XADD` and `CMPXCHG` weren't
+restartable after a page fault); fixed in the fork at `d26cf8d2` (its issue
+#5), so the machine now runs the Go guest agent (`exec`, `ports`, `refresh`).
+There are no 64-bit playgrounds yet: none has been built or tried on this machine.
 
 **Where the emulator comes from.** `emulator/PROVENANCE.md` records the pinned
 commit and why its files can be trusted: they are the fork's own CI build of

@@ -15,7 +15,10 @@ import { createRequire } from "node:module";
 
 const here = import.meta.dirname;
 const root = path.resolve(here, "..");
-const v86Build = path.join(path.dirname(createRequire(import.meta.url).resolve("v86/package.json")), "build");
+const v86Build = path.join(
+  path.dirname(createRequire(import.meta.url).resolve("v86/package.json")),
+  "build",
+);
 
 /**
  * @typedef {object} MachineSpec
@@ -30,17 +33,20 @@ export const MACHINES = {
   i686: {
     description: "32-bit x86 (upstream v86)",
     emulatorDir: v86Build,
-    kernel: [path.join(root, "build/kernel/bzImage"), path.join(here, "i686/prebuilt/bzImage")],
+    kernel: [
+      path.join(root, "build/kernel/bzImage"),
+      path.join(here, "i686/prebuilt/bzImage"),
+    ],
     runsGo: true,
   },
   x86_64: {
     description: "64-bit x86 (v86_64 fork, experimental)",
     emulatorDir: path.join(here, "x86_64/emulator"),
-    kernel: [path.join(root, "build/kernel-x86_64/bzImage"), path.join(here, "x86_64/prebuilt/bzImage")],
-    // Go programs abort on the fork ("sysMemStat overflow": an emulation bug in
-    // 64-bit XADD/CMPXCHG; x86_64/emulator/PROVENANCE.md), so this machine gets no
-    // Go agent: the image's shell agent runs instead (no exec, ports or refresh).
-    runsGo: false,
+    kernel: [
+      path.join(repo, "build/kernel-x86_64/bzImage"),
+      path.join(here, "x86_64/prebuilt/bzImage"),
+    ],
+    runsGo: true,
   },
 };
 
@@ -57,7 +63,8 @@ export const MACHINES = {
  */
 
 /** The --arch= argument of this process, if any. */
-export const argArch = () => process.argv.find((a) => a.startsWith("--arch="))?.slice("--arch=".length);
+export const argArch = () =>
+  process.argv.find((a) => a.startsWith("--arch="))?.slice("--arch=".length);
 
 /**
  * Resolved absolute paths for one machine. Default: --arch=, else $VM_ARCH, else `fallback`.
@@ -68,9 +75,15 @@ export const argArch = () => process.argv.find((a) => a.startsWith("--arch="))?.
 export function machine(arch, fallback = "i686") {
   arch ??= argArch() || process.env.VM_ARCH || fallback;
   const machine = MACHINES[arch];
-  if (!machine) throw new Error(`the machine must be one of ${Object.keys(MACHINES).join(", ")} (got "${arch}")`);
+  if (!machine)
+    throw new Error(
+      `the machine must be one of ${Object.keys(MACHINES).join(", ")} (got "${arch}")`,
+    );
   const kernel = machine.kernel.find((c) => fs.existsSync(c));
-  if (!kernel) throw new Error(`[${arch}] no kernel: none of ${machine.kernel.map((k) => path.relative(root, k)).join(", ")} (npm run kernel)`);
+  if (!kernel)
+    throw new Error(
+      `[${arch}] no kernel: none of ${machine.kernel.map((k) => path.relative(root, k)).join(", ")} (npm run kernel)`,
+    );
   return {
     arch,
     description: machine.description,
@@ -78,7 +91,10 @@ export function machine(arch, fallback = "i686") {
     lib: path.join(machine.emulatorDir, "libv86.mjs"),
     wasm: path.join(machine.emulatorDir, "v86.wasm"),
     wasmFallback: path.join(machine.emulatorDir, "v86-fallback.wasm"),
-    firmware: { seabios: path.join(here, "firmware/seabios.bin"), vgabios: path.join(here, "firmware/vgabios.bin") },
+    firmware: {
+      seabios: path.join(here, "firmware/seabios.bin"),
+      vgabios: path.join(here, "firmware/vgabios.bin"),
+    },
     kernel,
   };
 }
