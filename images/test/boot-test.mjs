@@ -78,7 +78,7 @@ const tls = await loadTlsFile();
 let cache = /** @type {any} */ (null);
 vm.add_listener("emulator-loaded", async () => {
   cache = installBlobCache(vm.fs9p, { maxBytes: 256 << 20 }); // as the runtime does
-  if (vmTarget.agent) await installAgent(vm.fs9p, new Uint8Array(fs.readFileSync(vmTarget.agent))); // likewise
+  await installAgent(vm.fs9p, new Uint8Array(fs.readFileSync(vmTarget.agent))); // likewise
   await writeGuestFile(vm.fs9p, "/etc/ssl/certs/browser-vm-ca.pem", enc.encode(tls.caPEM));
   attachFetchNetwork(vm, { tls, log: () => {}, fetchImpl: stubFetch });
   vm.run();
@@ -86,8 +86,7 @@ vm.add_listener("emulator-loaded", async () => {
 const { io, agent, sh } = wire(vm);
 
 await until(() => io.agentReady, "agent ready");
-const goAgent = Boolean(vmTarget.agent);
-check(`boot + ${goAgent ? "Go" : "shell"} agent ready on ttyS1`, goAgent ? io.agentReady.protocol >= 2 : io.agentReady.protocol === 0,
+check("boot + Go agent ready on ttyS1", io.agentReady.protocol >= 2,
   `${elapsed()}, protocol ${io.agentReady.protocol}, kernel ${io.agentReady.kernel}`);
 await until(() => PROMPT.test(io.out), "shell prompt");
 check("shell prompt on ttyS0", true, elapsed());
@@ -115,9 +114,6 @@ check("file read twice is fetched once (blob cache)", cache.fetches - fetchesBef
 // control channel (runtime/guest/agent)
 const resized = await agent.request({ cmd: "resize", tty: "ttyS0", rows: 33, cols: 101 });
 check("resize via agent", resized.ok && (await sh("stty size")) === "33 101");
-if (!goAgent) {
-  console.log("SKIP  exec and ports — the shell agent doesn't have them (no Go agent for this VM)");
-} else {
 const ex = await agent.exec(["sh", "-c", "uname -m; echo oops >&2; exit 3"]);
 check("exec: exit code, stdout and stderr kept apart", ex.code === 3 && dec.decode(ex.stdout).trim() === vmTarget.arch && dec.decode(ex.stderr).trim() === "oops",
   `code ${ex.code}, ${ex.ms} ms`);
@@ -129,7 +125,6 @@ for (let i = 0; i < 20 && !(/** @type {number[]} */ (ports.ports ?? []).includes
   ports = await agent.request({ cmd: "ports" });
 }
 check("ports lists a listening server", ports.ok && /** @type {number[]} */ (ports.ports).includes(9123), JSON.stringify(ports.ports));
-}
 
 // network: guest → fake TCP → (tls.wasm) → HTTP parser → fetch()
 let r = await sh("wget -qO- http://example.com/plain");
@@ -170,16 +165,6 @@ check("guest rejects the cert without the tab's CA (it really verifies)", /rc=1$
   const two = wire(vm2);
   await new Promise((res) => vm2.add_listener("emulator-loaded", res));
   const t1 = Date.now();
-  if (!goAgent) {
-    // The shell agent has no refresh: check that the restored machine runs and kept its files.
-    const echoed = await two.sh("echo restored-$((6*7))");
-    check("restore: the shell answers", echoed === "restored-42", `${Date.now() - t1} ms after load; ${JSON.stringify(echoed)}`);
-    check("project files survive the snapshot", dec.decode(await vm2.read_file("/root/project/g.txt")).trim() === "from-guest");
-    console.log("SKIP  refresh after restore (clock, randomness, CA): needs the Go agent, which this VM can't run yet");
-    await vm2.stop();
-    console.log(`done in ${elapsed()}`);
-    process.exit();
-  }
   two.agent.assume(2);
   const refreshed = await two.agent.request({ cmd: "refresh", seed: freshSeed(), timeMs: Date.now() + ahead });
   check("restore + agent refresh", refreshed.ok && refreshed.caReplaced === 1,

@@ -75,6 +75,6 @@ export const playgroundSources = () => fs.readdirSync(path.join(here, "playgroun
  */
 export function bootTarget(arch) {
   const m = resolveMachine(arch);
-  const { tls, agent } = runtimeAssets(m.arch, { agent: m.runsGo });
+  const { tls, agent } = runtimeAssets(m.arch);
   return { ...m, guest: baseImage(m.arch), tls, agent };
 }

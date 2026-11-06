@@ -18,7 +18,7 @@ const app = path.join(root, "dist/ide");
 const vmDir = path.join(app, "site/vm");
 if (!fs.existsSync(path.join(vmDir, "fs.json"))) { console.error("no build in dist/ide/: run npm run build first"); process.exit(1); }
 const has = (/** @type {string} */ id) => fs.existsSync(path.join(vmDir, "playgrounds", id, "manifest.json"));
-// The build defines __VM_MACHINE__ ({ arch, agent }) in the runtime worker's bundle.
+// The build defines __VM_MACHINE__ ({ arch }) in the runtime worker's bundle.
 const arch = /arch: "x86_64"/.test(fs.readFileSync(path.join(app, "site/host/runtime/worker.js"), "utf8")) ? "x86_64" : "i686";
 
 const check = (/** @type {string} */ name, /** @type {boolean} */ ok, detail = "") => {

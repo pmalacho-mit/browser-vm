@@ -42,7 +42,7 @@ Bump the commit deliberately, update this file, and rerun both
 
 - 2026-11-05: `4e9b7b4c` → `d26cf8d2`, for the XADD/CMPXCHG fix. `libv86.mjs` is
   byte-identical; the `.wasm` files changed (`f73d6b1f…`, `5adb41cd…` before). Go programs
-  now run, so the machine ships the Go agent (`runsGo`).
+  now run, so the machine ships the Go agent.
 
 - 2026-11-05: moved from portlandhodl/v86_64 at `c3945744` to this project's
   fork at `4e9b7b4c`, for the snapshot fix. The previous files' SHA-256s were

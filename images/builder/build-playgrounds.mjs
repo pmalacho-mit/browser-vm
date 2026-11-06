@@ -34,7 +34,6 @@ import { PreviewGateway } from "@browser-vm/runtime/internals/preview";
 
 const images = path.resolve(import.meta.dirname, "..");
 const vm = bootTarget(); // --arch= / $VM_ARCH: the machine, the base image and the runtime's files for it
-if (!vm.agent) throw new Error(`playgrounds need the Go guest agent, which the ${vm.arch} machine can't run yet (machines/index.mjs, runsGo)`);
 const OUT = PLAYGROUNDS_BUILD;
 const POOL = path.join(OUT, "rootfs");
 const TOOLS = path.join(OUT, "tools");
@@ -186,7 +185,7 @@ async function snapshot(/** @type {string} */ id, /** @type {Manifest} */ m) {
   const ready = new Promise((res) => (agent.onReady = res));
   emulator.add_listener("emulator-loaded", async () => {
     installBlobCache(emulator.fs9p, { maxBytes: 512 << 20 });
-    await installAgent(emulator.fs9p, new Uint8Array(fs.readFileSync(/** @type {string} */ (vm.agent))));
+    await installAgent(emulator.fs9p, new Uint8Array(fs.readFileSync(vm.agent)));
     await writeGuestFile(emulator.fs9p, "/etc/ssl/certs/browser-vm-ca.pem", enc.encode(tls.caPEM));
     // At build time the guest reaches the network directly (no gate: no user secrets here).
     attachFetchNetwork(emulator, { tls, log: () => {}, fetchImpl: (url, init) => fetch(url, init) });
@@ -280,7 +279,7 @@ async function snapshot(/** @type {string} */ id, /** @type {Manifest} */ m) {
     memoryMB: m.memoryMB, open: m.open ?? [],
     ...(m.server && { server: { port: m.server.port, log: "/var/log/dev-server.log" } }),
     state: "state.bin.zst", stateBytes: zst.length,
-    emulator: fileId(vm.wasm), kernel: fileId(vm.kernel), agent: fileId(/** @type {string} */ (vm.agent)),
+    emulator: fileId(vm.wasm), kernel: fileId(vm.kernel), agent: fileId(vm.agent),
     warmupMs: warmMs, built: new Date().toISOString(),
   };
   fs.writeFileSync(path.join(OUT, id, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n");

@@ -5,6 +5,4 @@
 declare const __VM_MACHINE__: {
   /** "i686" or "x86_64". */
   arch: string;
-  /** Whether the build ships the Go guest agent (the machine can run Go programs). */
-  agent: boolean;
 } | undefined;

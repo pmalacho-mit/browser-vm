@@ -27,7 +27,7 @@ default (`../apps/`). Every script takes it: `npm run build:x86_64`,
 The runtime bundles the machine's emulator: `import { V86 } from "v86"` is
 pointed at the machine's `libv86.mjs` at build time (`../host/build.mjs`), and
 the runtime learns which machine it has from one build define,
-`__VM_MACHINE__` (`{ arch, agent }`). Types always come from the npm v86 package.
+`__VM_MACHINE__` (`{ arch }`). Types always come from the npm v86 package.
 
 ## The kernel
 

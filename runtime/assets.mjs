@@ -12,15 +12,14 @@ const first = (/** @type {string[]} */ ...candidates) => candidates.find((c) => 
 
 /**
  * @param {string} arch  the machine's architecture ("i686", "x86_64")
- * @param {{ agent: boolean }} o  whether to ship the Go agent (the machine can run Go programs)
- * @returns {{ tls: string, agent: string | null }}  absolute paths
+ * @returns {{ tls: string, agent: string }}  absolute paths
  */
-export function runtimeAssets(arch, { agent }) {
+export function runtimeAssets(arch) {
   const tls = first(path.join(repo, "build/tls/tls.wasm"), path.join(here, "tls/prebuilt/tls.wasm"));
   if (!tls) throw new Error("no tls.wasm (npm run tls)");
-  const agentBin = agent ? first(path.join(repo, `build/agent/vm-agent-${arch}`), path.join(here, `guest/prebuilt/vm-agent-${arch}`)) : null;
-  if (agent && !agentBin) throw new Error(`no guest agent for ${arch} (npm run agent)`);
-  return { tls, agent: agentBin ?? null };
+  const agent = first(path.join(repo, `build/agent/vm-agent-${arch}`), path.join(here, `guest/prebuilt/vm-agent-${arch}`));
+  if (!agent) throw new Error(`no guest agent for ${arch} (npm run agent)`);
+  return { tls, agent };
 }
 
 /** The guest half of the runtime, which every image must contain (images/). */
