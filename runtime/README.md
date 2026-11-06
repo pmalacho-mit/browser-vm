@@ -92,7 +92,7 @@ No gate: every guest request is refused. Implementations live in `../gates/`.
 |---|---|
 | `vm-init` (PID 1) | Mounts `/proc`, `/sys`, `/dev`, `/tmp`. Runs a respawning `setsid -c` login shell per console (that gives job control and Ctrl+C) and starts the agent. Independent of the distro's init system. |
 | `agent/` (Go) | JSON-lines RPC on ttyS1: `resize` (TIOCSWINSZ → SIGWINCH, so vim/top re-layout), `hangup` (closing a terminal SIGHUPs that session, like SSH), `exec` (exit code, stdout, stderr), `ports` (listening sockets) and `refresh` (after a snapshot restore: reseed the RNG, set the clock, swap in this tab's CA). The runtime writes the binary into the guest before boot, so it works with any image. `npm run agent` rebuilds it, reproducibly. |
-| `vm-agent` (shell) | The fallback every image ships: `resize` and `hangup` only. Used when the machine can't run Go (x86_64). |
+| `vm-agent` (shell) | The fallback every image ships: `resize` and `hangup` only. Used only if the Go agent isn't written in at boot (the runtime couldn't fetch `vm-agent`). |
 
 ## Gotchas (each is commented where it's handled)
 
