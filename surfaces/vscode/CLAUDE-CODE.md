@@ -1,115 +1,187 @@
-# Can the Claude Code extension run in the browser VS Code?
+# Claude Code in the browser VM: what works, what blocks it, the plan
 
-Findings for issue #5. Checked against `Anthropic.claude-code` **2.1.318** from
-Open VSX (2026-11-06). Nothing here changes the app; the one new file besides
-this note is the probe, `images/test/claude-probe.mjs`.
+Findings for issue #5, checked on 2026-11-06 with `Anthropic.claude-code`
+**2.1.318** from Open VSX, **openvscode-server 1.109.5**, and the x86_64
+machine (v86_64 fork at `d26cf8d2`). Everything here was run, not inferred,
+unless marked otherwise. Nothing in the shipped apps changes; what this branch
+adds is listed at the end.
 
-**Short answer.** Not as shipped, and not by installing the `.vsix` into this
-workbench. The pieces underneath it do work: its native `claude` binary runs on
-the 64-bit machine. Two things stand between us and a working playground: a
-host for the extension's Node code, and a login that survives the browser's
-CORS rules.
+## Short answer
 
-## What the extension is
+- **The extension can't run in the browser workbench this repo ships** (Code-OSS
+  1.91 web): it is a Node extension (`main`, no `browser` entry, needs VS Code
+  ≥ 1.94) that spawns a 324 MB native `claude` binary.
+- **A real VS Code server inside the VM works, almost.** openvscode-server
+  (MIT, Open VSX) runs on the 64-bit machine with the extension preinstalled:
+  it listens after 16 s, serves the workbench to a real browser, the Explorer
+  shows the VM's files, the extension host starts and the Claude Code
+  extension's UI appears. **One bug stands in the way: the fork's JIT emits an
+  invalid WebAssembly module** the moment the workbench's WebSocket connects,
+  and the emulator dies. With the JIT off everything else runs, too slowly to
+  use (remote handshakes time out and retry; the Explorer appears after 1.5–5
+  min; the extension had not activated 20 min later).
+- **An API key works, an in-app OAuth login doesn't.** `api.anthropic.com`
+  answers browser requests with `access-control-allow-origin: *` as long as the
+  request carries `anthropic-dangerous-direct-browser-access: true`; the gate
+  can hold the key and add that header. The OAuth token exchange
+  (`platform.claude.com/v1/oauth/token`) refuses browser origins
+  (`400 Disallowed CORS origin`), so `/login` from inside the VM can't finish. A
+  long-lived token from `claude setup-token` (made on the user's own machine) is
+  the other "paste a code" option.
 
-| Fact | How I checked | Consequence |
+## 1. The extension, as published
+
+| Fact | Checked by | Consequence |
 |---|---|---|
-| Published per platform (`linux-x64`, `alpine-x64`, `darwin-*`, `win32-*`, …), **no universal / web build**. `linux-x64` is 162 MB. | `GET open-vsx.org/api/Anthropic/claude-code` | Nothing installable in a web workbench. |
-| `package.json` has `main: ./extension.js`, **no `browser`**. `extensionKind: ["workspace"]`. | unzipped the `.vsix` | The web extension host (a Worker) never loads it. VS Code runs it only in a Node extension host. |
-| `engines.vscode: ^1.94.0`. This repo's workbench (`vscode-web`) is **1.91**. | manifest, `surfaces/vscode` | Refused as incompatible even before the entry point matters. |
-| `extension.js` (3.4 MB bundle) requires `fs`, `child_process`, `os`, `net`, `tls`, `http(s)`, `crypto`, `readline`, … and calls `spawn()` in ~10 places. | grep over the bundle | Needs a Node runtime, or shims for each of those. |
-| It starts `resources/native-binary/claude` (324 MB, a Bun-compiled executable, one per platform) and talks to it over stdio. The chat UI is a webview (`webview/index.js`, 6 MB) that doesn't care where it runs. | file listing, `file(1)` | The model-facing logic is the binary, not the extension. |
+| Per-platform `.vsix` only (`linux-x64`, `alpine-x64`, `darwin-*`, `win32-*`; 162 MB); no universal/web build | `GET open-vsx.org/api/Anthropic/claude-code` | nothing a web extension host can load |
+| `main: ./extension.js`, no `browser`; `extensionKind: ["workspace"]`; `engines.vscode: ^1.94.0` | the manifest in the `.vsix` | needs a Node extension host and VS Code ≥ 1.94 (this repo's `vscode-web` is 1.91) |
+| `extension.js` (3.4 MB) requires `fs`, `child_process`, `net`, `tls`, `http(s)`, `os`, `crypto`, …, spawns in ~10 places | grep of the bundle | not shimmable in a reasonable amount of work |
+| spawns `resources/native-binary/claude` (324 MB, Bun-compiled, dynamically linked) and talks stream-json over stdio; the chat UI is a webview | file listing, `file(1)` | the extension host must be *in* the VM, next to the binary |
+| `@anthropic-ai/claude-code` on npm is a launcher for the same binaries (`…-linux-x64-musl` etc.), Node ≥ 22 | npm registry | no pure-JS CLI either |
 
-The npm package `@anthropic-ai/claude-code` is now just a launcher for the same
-binaries (`@anthropic-ai/claude-code-linux-x64-musl` …), so there is no
-plain-JS CLI to run under the VM's Node either.
+## 2. The `claude` binary on the 64-bit machine
 
-## What I ran: the CLI on the repo's VM
+`images/test/claude-probe.mjs` boots the x86_64 machine under Node, copies a
+binary in (or boots another image with `--image=`), and runs a command.
 
-`images/test/claude-probe.mjs` boots the **x86_64** machine under Node, copies
-the `linux-x64-musl` binary (from `npm pack @anthropic-ai/claude-code-linux-x64-musl`)
-into the guest, and runs a command.
-
-```
-node --experimental-strip-types --disable-warning=ExperimentalWarning \
-  images/test/claude-probe.mjs path/to/claude --mem=1536 --cmd="claude --version"
-```
-
-| Command in the guest | Result |
+| In the guest (Alpine base image, musl build) | Result |
 |---|---|
-| `claude --version` | `2.1.318 (Claude Code)`, 3–4 s |
-| `claude auth status` | JSON, `loggedIn: false`, 43 s (first start) |
-| `claude -p 'say hi' --output-format json` | runs to the API layer and answers `Not logged in · Please run /login`, 41 s of the run |
+| `claude --version` | `2.1.318 (Claude Code)` in 3–4 s |
+| `claude auth status` | JSON, `loggedIn: false`; 43 s (first start) |
+| `claude -p 'say hi' --output-format json` | reaches the API layer: `Not logged in · Please run /login` |
 
-- It works on the 64-bit machine only (the i686 kernel can't execute x86-64
-  code). That machine is experimental and has **no playgrounds** yet.
-- **RAM: 1536 MiB works; 2048 MiB and above crashes** the emulator at boot
-  (`RangeError: offset is out of bounds` in `libv86.mjs`, with 2048 and 3072).
-  Memory needs to be set as `n * 1024 * 1024`; `n << 20` overflows at 2048.
-- The binary is 324 MB and goes into the guest in under a second (an in-memory
-  inode). A browser would have to fetch it, so a deployed playground ships
-  ~150 MB compressed unless it is fetched on demand.
-- Startup is slow (tens of seconds) on one emulated core. Usable, not snappy.
-- I did **not** run a real conversation: that needs credentials, and I used
-  none.
+The glibc build runs the same way on the Debian image below. I could not run a
+real prompt: no credential was available in this environment.
 
-## What blocks it, in order
+## 3. A VS Code server in the VM (option C)
 
-1. **Nothing hosts the extension.** Two ways, neither small:
-   - *A Node extension host inside the VM* (a VS Code server on Alpine/x86_64,
-     the workbench attached to it as a remote). Honest guess: it doesn't fit in
-     1.5 GB and one slow core next to the `claude` process, and the workbench
-     would need to be a version that matches a current server.
-   - *Run `extension.js` in the browser's extension host with shims* for
-     `child_process`, `fs`, `os`… mapped onto the runtime, a patched `engines`,
-     and any 1.92–1.94 API it uses on a 1.91 workbench. `spawn()` is the hard
-     part: the runtime's `exec` is **one-shot** (stdin in, stdout/stderr out when
-     the process ends, `runtime.ts:228`). The extension needs a long-lived,
-     bidirectional pipe to `claude` (stream-json). That means a new streaming
-     `spawn` in the Go guest agent and in the runtime protocol.
-2. **Login can't complete in a browser tab.** Login is "open a URL, paste the
-   code back", and the CLI then POSTs the code to
-   `platform.claude.com/v1/oauth/token`. Through the web gate that is a browser
-   `fetch` from the gate's origin, and the endpoint answers the preflight with
-   **`400 Disallowed CORS origin`** (also `console.anthropic.com`, the
-   `/api/oauth/*` endpoints and `claude.ai`; I checked with `OPTIONS` from
-   `curl` using a `*.localhost` Origin). The bridge extension (Chrome only,
-   per-site approval) is the repo's answer to that; its content script
-   currently matches only `http://gate.localhost/*`, not a desolate/Pages gate.
-3. **Even with a token, the Messages API needs a header the CLI doesn't send.**
-   `api.anthropic.com` answers a preflight with `200` and
-   `access-control-allow-origin: *` **only if** the request lists
-   `anthropic-dangerous-direct-browser-access`; without it, `400`. The gate would
-   have to add that header for `api.anthropic.com` (the gate only forwards a
-   safelist of headers unless the request carries a secret, `core.ts:292`). The
-   host also isn't in the default policy list (`default-policy.ts`), so the user
-   would have to allow `api.anthropic.com` and the OAuth hosts.
+**Image.** `images/claude-probe/` builds a Debian bookworm x86_64 image with
+openvscode-server 1.109.5 at `/opt/openvscode-server` and the extension unzipped
+into `/root/.openvscode-server/extensions/` (266 MB compressed; `build.sh`,
+Docker with linux/amd64 emulation; Node won't run under qemu-user, so the
+`.vsix` is unpacked rather than installed). It still boots with `vm-init` and
+the Go agent; `installAgent` had to learn that `/sbin` is a symlink there
+(`runtime/src/agent-client.ts`).
 
-## Ways forward (a decision for the maintainer)
+**Probe.** `images/test/vscode-server-probe.mjs` boots that image, starts the
+server, measures, fetches `/` through the same TCP path previews use
+(`PreviewGateway`), bridges a local port to the guest's server, and (with
+`--browser`) drives headless Chromium through the workbench. Measured on this
+8-core aarch64 dev container, 1536 MiB guest:
 
-- **A. Probe, then shim (smaller).** Add a streaming `spawn` to the guest agent
-  and runtime protocol; run `extension.js` in the existing web extension host
-  with node shims; build an x86_64 `claude` playground that restores a
-  snapshot with the binary in place. Authenticate with a long-lived token from
-  `claude setup-token` run on the user's own machine, pasted into the gate as a
-  secret (`CLAUDE_CODE_OAUTH_TOKEN`), with the gate adding the browser-access
-  header for `api.anthropic.com`. That is a "code", but not the in-app
-  `/login` flow.
-- **B. Keep the in-app login.** As A, plus a way past the OAuth CORS refusal: a
-  small relay on a host the maintainer controls (breaks the "everything
-  client-side" rule), or the bridge extension extended to the gate's origin.
-- **C. Real VS Code server in the VM**, the workbench as a remote. Most faithful
-  to "the extension runs unmodified"; the least likely to fit the memory and
-  speed of the emulated machine, and it needs a newer workbench build.
-- **D. Skip the extension.** The CLI runs in the VM's terminal today (once the
-  binary is on the disk), with the same login and CORS limits.
+| Step | JIT on | JIT off (`--no-jit`) |
+|---|---|---|
+| server listening on :3000 after launch | 16–20 s | 31 s |
+| first `GET /` (workbench HTML) | 22–27 s | 35 s |
+| workbench shell rendered in the browser | 17–24 s after navigation | 18 s |
+| workbench's WebSocket to the server | **emulator dies: JIT CompileError** (3 of 3 runs) | handshakes time out (60 s limits) and retry; Explorer lists `/root/project` after 86 s (282 s with another VM sharing the CPU) |
+| extension host process in the guest | — | 4 s later (90 MB RSS) |
+| Claude Code extension | — | its editor-title button appears (contributions scanned); its command `claude-vscode.sidebar.open` is still "not found" 20 min later, so **activation was not observed** |
+| memory in the guest | 41 MB used of 1485 with the server up | 173 MB with server, extension host and file watcher |
 
-## Not verified
+The JIT failure is deterministic for this workload and is an emulator bug, not
+VS Code's: `CompileError: i64.store[0] expected type i32, found i64.load of
+type i64` in the module handed to `codegen_finalize` while compiling V8's own
+generated code inside node. The refused module (which reproduces the error on
+its own with `new WebAssembly.Module(bytes)`), the guest code page and a
+disassembly are in `images/claude-probe/repro/`, with an issue text for the
+fork (`ISSUE.md`; file it with
+`gh issue create --repo pmalacho-mit/v86_64 --title "JIT emits i64 address into i64.store (CompileError) running openvscode-server's node" --body-file images/claude-probe/repro/ISSUE.md`).
 
-- That vscode-web 1.91 rejects the `.vsix` — inferred from the manifest
-  (`engines`, no `browser` entry), not run.
-- Anything past "Not logged in": a prompt/response round trip, the OAuth
-  exchange itself (I did not send a real code), or `stream-json` mode.
-- Behaviour in a browser: the probe runs headless under Node with the node
-  `fetch`, so none of the CORS findings above were exercised through the real
-  gate. They come from `OPTIONS` requests.
+**Two more limits found on the way:**
+
+- **Guest RAM ceiling is about 2 GiB minus the largest file.** 2000 MiB boots;
+  2047 MiB and up crash at start (`RangeError: offset is out of bounds`). Worse,
+  at 2000 MiB large zstd blobs silently read back as zeros (the 123 MB `node`
+  binary → "Exec format error"): decompression scratch shares the emulator's
+  32-bit WebAssembly memory with the guest. **1536 MiB works for everything in
+  this image** (338 MB `claude` included). Keep guest RAM + the biggest
+  compressed+decompressed file under 2 GiB, or store very large files
+  uncompressed.
+- **The server's own HTTPS needs `NODE_EXTRA_CA_CERTS=/etc/ssl/certs/browser-vm-ca.pem`**
+  (the per-tab CA), as the profile sets for shells; the probe launches it so.
+  And `--disable-workspace-trust`, or the trust dialog eats the first keystrokes.
+
+## 4. Network and login
+
+| Request | From a browser origin (`curl -X OPTIONS` / `POST` with `Origin:`) |
+|---|---|
+| `POST api.anthropic.com/v1/messages` with `anthropic-dangerous-direct-browser-access` listed | preflight 200, response `access-control-allow-origin: *` (also on a 401) |
+| the same without that header | preflight 400 |
+| `POST platform.claude.com/v1/oauth/token` (also `console.anthropic.com`, `api.anthropic.com/api/oauth/*`, `claude.ai/api/oauth/*`) | `400 Disallowed CORS origin`, for `*.localhost` and even for `Origin: https://claude.ai` |
+
+So, through the web gate: the Messages API works if the gate adds the header
+for `api.anthropic.com` (it forwards only safelisted headers unless the request
+carries a secret, `gates/core/src/core.ts` `forwardHeaders`), and
+`api.anthropic.com` must be allowed (not in `default-policy.ts` today). Login
+inside the VM stops at the token exchange. Telemetry hosts (`statsig.anthropic.com`,
+Sentry) can simply stay blocked (`CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`).
+
+## 5. The plan
+
+**Goal:** people work in a browser-based computer with Claude Code beside them,
+in a real VS Code, with the smallest security footprint: the agent, its binary
+and its shell all live in the VM; the only way out is the gate; the key never
+enters the VM.
+
+0. **Unblock the emulator** (the fork): fix the JIT emitter (`repro/ISSUE.md`).
+   Nothing below is worth building until a run of the probe with the JIT on
+   gets past the WebSocket step. Then re-measure: every number above with the
+   JIT on but for the first three is unknown.
+1. **A `vscode-server` surface and a `claude` app on x86_64.**
+   - Image: the Debian one here, as an image the app can name (`image:
+     "claude"`), plus a **playground snapshot** with the server already
+     listening (restore ≈ 1 s instead of a 16 s start plus a 25 s first
+     request), the agent's `refresh` re-issuing the CA as it does now.
+   - Page: a boot page like `surfaces/vscode/page/boot.ts` but for the server's
+     workbench: its static files copied into the site at build time (from the
+     tarball's `out/`), `remoteAuthority` set to a virtual host, and
+     **`webSocketFactory`** implemented over `PreviewGateway.socketOpen/Write/Close`
+     (the raw TCP-into-the-guest path that exists for previews), so the remote
+     connection needs no new runtime or agent feature. Webview and extension
+     resources (`vscode-remote-resource`) go through a preview origin's service
+     worker. The webview host stays `vscode-cdn.net` or is self-hosted, as today.
+   - Launch: a service script in the image (`NODE_EXTRA_CA_CERTS`,
+     `--disable-workspace-trust`, `--without-connection-token`, bound to
+     `0.0.0.0` because connections arrive from v86's router address).
+   - The existing `linux-vm` extension and its terminals stay for the i686 app;
+     this app uses the server's own terminals and file system (the Explorer
+     *is* `/root/project` either way, through 9p).
+2. **Credentials through the gate, no login UI.**
+   - A secret `GATE-ANTHROPIC-KEY` (API key) or `GATE-CLAUDE-OAUTH-TOKEN`
+     (`claude setup-token`), exported in the VM as `ANTHROPIC_API_KEY` /
+     `CLAUDE_CODE_OAUTH_TOKEN` through `/etc/profile.d/gate-secrets.sh` as other
+     secrets are; the extension's `claudeCode.environmentVariables` setting can
+     pass them to the extension host too.
+   - Gate: allow `api.anthropic.com` for that secret, add
+     `anthropic-dangerous-direct-browser-access: true` on requests to it, and set
+     `claudeCode.disableLoginPrompt` in the image's settings.
+   - The user's "code" is then the key or token pasted into the gate's popup
+     (gate origin, encrypted vault), never typed into the VM.
+3. **In-app `/login`, if still wanted:** only with something outside the
+   browser's CORS rules: the repo's bridge extension (Chrome, per-site approval;
+   its content script must also match the deployed gate origin) or a tiny
+   token-exchange relay you host. Decide after 1–2 work.
+
+**Risks to keep in view:** one emulated core (expect tens of seconds for the
+server to start and for the first interactions; snapshots hide the start only),
+the 2 GiB memory line, a ~2 GB WebAssembly memory in the user's tab, the
+extension's auto-update and gallery traffic (set `extensions.autoUpdate: false`,
+keep Open VSX reachable or not), and that every release of the extension is a
+new 162 MB `.vsix` baked into an image.
+
+## What this branch adds
+
+- `runtime/src/agent-client.ts`: `installAgent` follows a symlinked `/sbin`.
+- `images/test/claude-probe.mjs`: run `claude` (or anything) on the x86_64 VM.
+- `images/test/vscode-server-probe.mjs`: the option C probe (server, HTTP,
+  bridge, headless Chromium, JIT failure capture, `--no-jit`).
+- `images/claude-probe/`: the Debian + openvscode-server + extension image
+  (`build.sh`, `Dockerfile`), and `repro/` for the fork.
+- This note.
+
+**Not verified:** a prompt/response round trip (no credential here); the gate
+path in a real browser (CORS facts come from `curl`); that `vscode-web` 1.91
+rejects the `.vsix` (from the manifest); the extension activating and spawning `claude`
+from the server (under the interpreter it had not activated after 20 min; with
+the JIT this is the first thing to check once the fork is fixed).

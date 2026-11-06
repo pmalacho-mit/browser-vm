@@ -21,8 +21,9 @@ import { bootTarget } from "../index.mjs";
 
 const args = process.argv.slice(2);
 const opt = (name, dflt) => args.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? dflt;
-const binary = args.find((a) => !a.startsWith("--"));
-if (!binary) { console.error("usage: claude-probe.mjs <claude binary> [--mem=MB] [--cmd=...] [--timeout=s]"); process.exit(2); }
+const binary = args.find((a) => !a.startsWith("--")) ?? null;
+const image = opt("image", ""); // an image folder (fs.json + rootfs/) instead of the base image; then the binary is optional
+if (!binary && !image) { console.error("usage: claude-probe.mjs [<claude binary>] [--image=<dir>] [--mem=MB] [--cmd=...] [--timeout=s]"); process.exit(2); }
 const memMB = Number(opt("mem", "2048")), cmd = opt("cmd", "claude --version"), timeoutS = Number(opt("timeout", "600"));
 
 const vmTarget = bootTarget("x86_64");
@@ -43,7 +44,7 @@ const vm = new V86({
   net_device: { type: "virtio", relay_url: "fetch" },
   autostart: false, disable_keyboard: true, disable_mouse: true, disable_speaker: true,
   bzimage: { url: vmTarget.kernel }, cmdline: GUEST_CMDLINE,
-  filesystem: { basefs: path.join(vmTarget.guest, "fs.json"), baseurl: path.join(vmTarget.guest, "rootfs") + "/" },
+  filesystem: { basefs: path.join(image || vmTarget.guest, "fs.json"), baseurl: path.join(image || vmTarget.guest, "rootfs") + "/" },
 });
 const tls = await loadTLS(vmTarget.tls, async (p) => new Response(fs.readFileSync(p)));
 const io = { out: "", ready: /** @type {any} */ (null) };
@@ -52,9 +53,11 @@ vm.add_listener("emulator-loaded", async () => {
   await installAgent(vm.fs9p, new Uint8Array(fs.readFileSync(/** @type {string} */ (vmTarget.agent))));
   await writeGuestFile(vm.fs9p, "/etc/ssl/certs/browser-vm-ca.pem", enc.encode(tls.caPEM));
   attachFetchNetwork(vm, { tls, log: () => {}, fetchImpl: (url, init) => fetch(url, init) });
-  const t = Date.now();
-  await writeGuestFile(vm.fs9p, "/usr/local/bin/claude", new Uint8Array(fs.readFileSync(binary)));
-  console.log(`binary copied into the guest in ${Date.now() - t} ms`);
+  if (binary) {
+    const t = Date.now();
+    await writeGuestFile(vm.fs9p, "/usr/local/bin/claude", new Uint8Array(fs.readFileSync(binary)));
+    console.log(`binary copied into the guest in ${Date.now() - t} ms`);
+  }
   vm.run();
 });
 const agent = new AgentClient((line) => vm.serial_send_bytes(1, enc.encode(line + "\n")));
@@ -65,7 +68,7 @@ vm.add_listener("serial0-output-byte", (b) => (io.out += String.fromCharCode(b))
 await until(() => io.ready, "agent ready", 120000);
 console.log(`VM up (${memMB} MiB, ${vmTarget.arch}) at ${elapsed()}`);
 const sh = (c) => agent.exec(["sh", "-c", c]);
-for (const c of ["chmod +x /usr/local/bin/claude; ls -l /usr/local/bin/claude; free -m | head -2", "ls /lib/ld-musl-x86_64.so.1; grep -o -m1 -w 'avx2\\|avx\\|sse4_2\\|bmi2' /proc/cpuinfo | sort -u | tr '\\n' ' '"]) {
+for (const c of ["chmod +x /usr/local/bin/claude; ls -lL /usr/local/bin/claude; free -m | head -2", "ls /lib/ld-musl-x86_64.so.1 /lib64/ld-linux-x86-64.so.2 2>&1; grep -o -m1 -w 'avx2\\|avx\\|sse4_2\\|bmi2' /proc/cpuinfo | sort -u | tr '\\n' ' '"]) {
   const r = await sh(c);
   console.log(`$ ${c}\n${new TextDecoder().decode(r.stdout)}${new TextDecoder().decode(r.stderr)}`);
 }
@@ -82,4 +85,5 @@ else {
   console.log(`exit code ${r.code} in ${((Date.now() - ts) / 1000).toFixed(1)} s`);
   process.exitCode = r.code === 0 ? 0 : 1;
 }
+if (args.includes("--console")) console.log("---- guest console ----\n" + io.out.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, "").slice(-6000));
 process.exit(process.exitCode ?? 0);

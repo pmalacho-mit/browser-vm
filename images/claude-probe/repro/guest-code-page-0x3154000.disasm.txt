@@ -1,0 +1,1262 @@
+# guest physical page 0x3154000 (4096 bytes), x86-64, disassembled from offset 0 (the JIT block's entry).
+# This is V8-generated machine code inside openvscode-server's node process.
+3154000: 48 8b 7f 17                      mov rdi, qword ptr [rdi + 0x17]
+3154004: 40 f6 c7 01                      test dil, 1
+3154008: 74 1f                            je 0x3154029
+315400a: 4c 8b 47 ff                      mov r8, qword ptr [rdi - 1]
+315400e: 45 0f b7 48 0b                   movzx r9d, word ptr [r8 + 0xb]
+3154013: 41 81 f9 11 04 00 00             cmp r9d, 0x411
+315401a: 74 e4                            je 0x3154000
+315401c: 4d 39 85 98 02 00 00             cmp qword ptr [r13 + 0x298], r8
+3154023: 0f 85 d3 07 00 00                jne 0x31547fc
+3154029: 83 f8 01                         cmp eax, 1
+315402c: 74 06                            je 0x3154034
+315402e: 48 8b 49 18                      mov rcx, qword ptr [rcx + 0x18]
+3154032: eb 07                            jmp 0x315403b
+3154034: 49 8b 8d f0 01 00 00             mov rcx, qword ptr [r13 + 0x1f0]
+315403b: 49 39 8d f0 01 00 00             cmp qword ptr [r13 + 0x1f0], rcx
+3154042: 74 25                            je 0x3154069
+3154044: f6 c1 01                         test cl, 1
+3154047: 74 2a                            je 0x3154073
+3154049: 48 89 75 e0                      mov qword ptr [rbp - 0x20], rsi
+315404d: 48 89 7d d0                      mov qword ptr [rbp - 0x30], rdi
+3154051: 48 8b c1                         mov rax, rcx
+3154054: e8 a7 d1 fd ff                   call 0x3131200
+3154059: 48 8b c8                         mov rcx, rax
+315405c: 48 8b 75 e0                      mov rsi, qword ptr [rbp - 0x20]
+3154060: 8b 45 d8                         mov eax, dword ptr [rbp - 0x28]
+3154063: 48 8b 7d d0                      mov rdi, qword ptr [rbp - 0x30]
+3154067: eb 0a                            jmp 0x3154073
+3154069: 48 b9 00 00 00 00 0a 00 00 00    movabs rcx, 0xa00000000
+3154073: f6 c1 01                         test cl, 1
+3154076: 75 18                            jne 0x3154090
+3154078: 49 b8 00 00 00 00 02 00 00 00    movabs r8, 0x200000000
+3154082: 49 3b c8                         cmp rcx, r8
+3154085: 0f 8c 2f 07 00 00                jl 0x31547ba
+315408b: 45 33 c9                         xor r9d, r9d
+315408e: eb 23                            jmp 0x31540b3
+3154090: f2 0f 10 41 07                   movsd xmm0, qword ptr [rcx + 7]
+3154095: 66 0f 76 c9                      pcmpeqd xmm1, xmm1
+3154099: 66 0f 73 f1 3f                   psllq xmm1, 0x3f
+315409e: 66 0f 73 d1 01                   psrlq xmm1, 1
+31540a3: 66 0f 2e c8                      ucomisd xmm1, xmm0
+31540a7: 0f 87 0d 07 00 00                ja 0x31547ba
+31540ad: 41 b9 01 00 00 00                mov r9d, 1
+31540b3: 41 b8 01 00 00 00                mov r8d, 1
+31540b9: 45 85 c9                         test r9d, r9d
+31540bc: 75 11                            jne 0x31540cf
+31540be: 49 b9 00 00 00 00 24 00 00 00    movabs r9, 0x2400000000
+31540c8: 4c 3b c9                         cmp r9, rcx
+31540cb: 7c 21                            jl 0x31540ee
+31540cd: eb 1a                            jmp 0x31540e9
+31540cf: f2 0f 10 41 07                   movsd xmm0, qword ptr [rcx + 7]
+31540d4: 49 ba 00 00 00 00 00 00 42 40    movabs r10, 0x4042000000000000
+31540de: 66 49 0f 6e ca                   movq xmm1, r10
+31540e3: 66 0f 2e c1                      ucomisd xmm0, xmm1
+31540e7: 77 05                            ja 0x31540ee
+31540e9: 45 33 c9                         xor r9d, r9d
+31540ec: eb 03                            jmp 0x31540f1
+31540ee: 4d 8b c8                         mov r9, r8
+31540f1: 45 85 c9                         test r9d, r9d
+31540f4: 0f 85 c6 06 00 00                jne 0x31547c0
+31540fa: f6 c1 01                         test cl, 1
+31540fd: 75 12                            jne 0x3154111
+31540ff: 4c 8b 0d 65 ff ff ff             mov r9, qword ptr [rip - 0x9b]
+3154106: 4c 3b c9                         cmp r9, rcx
+3154109: 0f 84 0b 03 00 00                je 0x315441a
+315410f: eb 20                            jmp 0x3154131
+3154111: f2 0f 10 41 07                   movsd xmm0, qword ptr [rcx + 7]
+3154116: 49 ba 00 00 00 00 00 00 24 40    movabs r10, 0x4024000000000000
+3154120: 66 49 0f 6e ca                   movq xmm1, r10
+3154125: 66 0f 2e c8                      ucomisd xmm1, xmm0
+3154129: 7a 06                            jp 0x3154131
+315412b: 0f 84 e9 02 00 00                je 0x315441a
+3154131: 40 f6 c7 01                      test dil, 1
+3154135: 0f 85 e6 01 00 00                jne 0x3154321
+315413b: f6 c1 01                         test cl, 1
+315413e: 75 06                            jne 0x3154146
+3154140: 48 c1 e9 20                      shr rcx, 0x20
+3154144: eb 16                            jmp 0x315415c
+3154146: f2 0f 10 41 07                   movsd xmm0, qword ptr [rcx + 7]
+315414b: f2 48 0f 2c c8                   cvttsd2si rcx, xmm0
+3154150: 48 83 f9 01                      cmp rcx, 1
+3154154: 0f 80 c9 08 00 00                jo 0x3154a23
+315415a: 8b c9                            mov ecx, ecx
+315415c: 48 c1 ff 20                      sar rdi, 0x20
+3154160: 44 8b cf                         mov r9d, edi
+3154163: 85 ff                            test edi, edi
+3154165: 7c 57                            jl 0x31541be
+3154167: 3b f9                            cmp edi, ecx
+3154169: 72 05                            jb 0x3154170
+315416b: 45 33 db                         xor r11d, r11d
+315416e: eb 54                            jmp 0x31541c4
+3154170: 48 63 c8                         movsxd rcx, eax
+3154173: 45 85 c9                         test r9d, r9d
+3154176: 75 14                            jne 0x315418c
+3154178: 49 8b 85 28 15 00 00             mov rax, qword ptr [r13 + 0x1528]
+315417f: 48 8b e5                         mov rsp, rbp
+3154182: 5d                               pop rbp
+3154183: 41 5a                            pop r10
+3154185: 48 8d 24 cc                      lea rsp, [rsp + rcx*8]
+3154189: 41 52                            push r10
+315418b: c3                               ret 
+315418c: 83 ff 0a                         cmp edi, 0xa
+315418f: 72 05                            jb 0x3154196
+3154191: 83 c7 57                         add edi, 0x57
+3154194: eb 03                            jmp 0x3154199
+3154196: 83 c7 30                         add edi, 0x30
+3154199: 81 ff ff 00 00 00                cmp edi, 0xff
+315419f: 0f 8f 92 06 00 00                jg 0x3154837
+31541a5: 4d 8b 85 98 06 00 00             mov r8, qword ptr [r13 + 0x698]
+31541ac: 49 8b 44 f8 0f                   mov rax, qword ptr [r8 + rdi*8 + 0xf]
+31541b1: 48 8b e5                         mov rsp, rbp
+31541b4: 5d                               pop rbp
+31541b5: 41 5a                            pop r10
+31541b7: 48 8d 24 cc                      lea rsp, [rsp + rcx*8]
+31541bb: 41 52                            push r10
+31541bd: c3                               ret 
+31541be: 41 f7 d9                         neg r9d
+31541c1: 4d 8b d8                         mov r11, r8
+31541c4: 45 85 db                         test r11d, r11d
+31541c7: 75 03                            jne 0x31541cc
+31541c9: 45 33 c0                         xor r8d, r8d
+31541cc: 45 8b d9                         mov r11d, r9d
+31541cf: eb 49                            jmp 0x315421a
+31541d1: 66 0f 1f 84 00 00 00 00 00       nop word ptr [rax + rax]
+31541da: 66 0f 1f 84 00 00 00 00 00       nop word ptr [rax + rax]
+31541e3: 66 0f 1f 84 00 00 00 00 00       nop word ptr [rax + rax]
+31541ec: 66 0f 1f 84 00 00 00 00 00       nop word ptr [rax + rax]
+31541f5: 66 0f 1f 84 00 00 00 00 00       nop word ptr [rax + rax]
+31541fe: 66 90                            nop 
+3154200: 44 8b d0                         mov r10d, eax
+3154203: 41 8b c3                         mov eax, r11d
+3154206: 45 8b da                         mov r11d, r10d
+3154209: 33 d2                            xor edx, edx
+315420b: f7 f1                            div ecx
+315420d: 41 83 c0 01                      add r8d, 1
+3154211: 45 8b d3                         mov r10d, r11d
+3154214: 44 8b d8                         mov r11d, eax
+3154217: 41 8b c2                         mov eax, r10d
+315421a: 45 85 db                         test r11d, r11d
+315421d: 77 e1                            ja 0x3154200
+315421f: 4d 63 e0                         movsxd r12, r8d
+3154222: 44 8b d8                         mov r11d, eax
+3154225: 4d 89 e7                         mov r15, r12
+3154228: 49 83 c7 10                      add r15, 0x10
+315422c: 0f 80 ee 00 00 00                jo 0x3154320
+3154232: 49 83 c7 07                      add r15, 7
+3154236: 4d 8b 75 48                      mov r14, qword ptr [r13 + 0x48]
+315423a: 49 83 e7 f8                      and r15, 0xfffffffffffffff8
+315423e: 4b 8d 04 3e                      lea rax, [r14 + r15]
+3154242: 49 39 45 50                      cmp qword ptr [r13 + 0x50], rax
+3154246: 0f 86 57 06 00 00                jbe 0x31548a3
+315424c: 49 81 ff 00 00 02 00             cmp r15, 0x20000
+3154253: 0f 83 4a 06 00 00                jae 0x31548a3
+3154259: 49 89 45 48                      mov qword ptr [r13 + 0x48], rax
+315425d: 49 83 c6 01                      add r14, 1
+3154261: 4b c7 44 3e f7 00 00 00 00       mov qword ptr [r14 + r15 - 9], 0
+315426a: 4d 8b bd 58 02 00 00             mov r15, qword ptr [r13 + 0x258]
+3154271: 4d 89 7e ff                      mov qword ptr [r14 - 1], r15
+3154275: 41 c7 46 07 03 00 00 00          mov dword ptr [r14 + 7], 3
+315427d: 45 89 46 0b                      mov dword ptr [r14 + 0xb], r8d
+3154281: 4d 8d 44 24 ff                   lea r8, [r12 - 1]
+3154286: eb 4b                            jmp 0x31542d3
+3154288: 66 0f 1f 84 00 00 00 00 00       nop word ptr [rax + rax]
+3154291: 66 0f 1f 84 00 00 00 00 00       nop word ptr [rax + rax]
+315429a: 66 0f 1f 84 00 00 00 00 00       nop word ptr [rax + rax]
+31542a3: 66 0f 1f 84 00 00 00 00 00       nop word ptr [rax + rax]
+31542ac: 66 0f 1f 84 00 00 00 00 00       nop word ptr [rax + rax]
+31542b5: 66 0f 1f 84 00 00 00 00 00       nop word ptr [rax + rax]
+31542be: 66 90                            nop 
+31542c0: 41 8b c1                         mov eax, r9d
+31542c3: 33 d2                            xor edx, edx
+31542c5: f7 f1                            div ecx
+31542c7: 47 88 64 06 0f                   mov byte ptr [r14 + r8 + 0xf], r12b
+31542cc: 49 83 e8 01                      sub r8, 1
+31542d0: 44 8b c8                         mov r9d, eax
+31542d3: 45 85 c9                         test r9d, r9d
+31542d6: 76 21                            jbe 0x31542f9
+31542d8: 4d 63 66 0b                      movsxd r12, dword ptr [r14 + 0xb]
+31542dc: 4d 39 e0                         cmp r8, r12
+31542df: 73 3e                            jae 0x315431f
+31542e1: 41 8b c1                         mov eax, r9d
+31542e4: 33 d2                            xor edx, edx
+31542e6: f7 f1                            div ecx
+31542e8: 83 fa 0a                         cmp edx, 0xa
+31542eb: 72 06                            jb 0x31542f3
+31542ed: 44 8d 62 57                      lea r12d, [rdx + 0x57]
+31542f1: eb cd                            jmp 0x31542c0
+31542f3: 44 8d 62 30                      lea r12d, [rdx + 0x30]
+31542f7: eb c7                            jmp 0x31542c0
+31542f9: 85 ff                            test edi, edi
+31542fb: 7d 0f                            jge 0x315430c
+31542fd: 49 63 4e 0b                      movsxd rcx, dword ptr [r14 + 0xb]
+3154301: 48 85 c9                         test rcx, rcx
+3154304: 77 01                            ja 0x3154307
+3154306: cc                               int3 
+3154307: 41 c6 46 0f 2d                   mov byte ptr [r14 + 0xf], 0x2d
+315430c: 49 63 cb                         movsxd rcx, r11d
+315430f: 49 8b c6                         mov rax, r14
+3154312: 48 8b e5                         mov rsp, rbp
+3154315: 5d                               pop rbp
+3154316: 41 5a                            pop r10
+3154318: 48 8d 24 cc                      lea rsp, [rsp + rcx*8]
+315431c: 41 52                            push r10
+315431e: c3                               ret 
+315431f: cc                               int3 
+3154320: cc                               int3 
+3154321: f2 0f 10 47 07                   movsd xmm0, qword ptr [rdi + 7]
+3154326: 4c 63 c0                         movsxd r8, eax
+3154329: 66 0f 57 c9                      xorpd xmm1, xmm1
+315432d: 66 0f 2e c8                      ucomisd xmm1, xmm0
+3154331: 7a 06                            jp 0x3154339
+3154333: 0f 84 cd 00 00 00                je 0x3154406
+3154339: f2 0f 10 47 07                   movsd xmm0, qword ptr [rdi + 7]
+315433e: 66 0f 2e c0                      ucomisd xmm0, xmm0
+3154342: 7b 14                            jnp 0x3154358
+3154344: 49 8b 85 28 11 00 00             mov rax, qword ptr [r13 + 0x1128]
+315434b: 48 8b e5                         mov rsp, rbp
+315434e: 5d                               pop rbp
+315434f: 41 5a                            pop r10
+3154351: 4a 8d 24 c4                      lea rsp, [rsp + r8*8]
+3154355: 41 52                            push r10
+3154357: c3                               ret 
+3154358: f2 0f 10 47 07                   movsd xmm0, qword ptr [rdi + 7]
+315435d: 4d 8b 8d 60 06 00 00             mov r9, qword ptr [r13 + 0x660]
+3154364: 41 f6 c1 01                      test r9b, 1
+3154368: 75 0f                            jne 0x3154379
+315436a: 49 c1 e9 20                      shr r9, 0x20
+315436e: 66 0f 57 c9                      xorpd xmm1, xmm1
+3154372: f2 41 0f 2a c9                   cvtsi2sd xmm1, r9d
+3154377: eb 06                            jmp 0x315437f
+3154379: f2 41 0f 10 49 07                movsd xmm1, qword ptr [r9 + 7]
+315437f: 66 0f 2e c8                      ucomisd xmm1, xmm0
+3154383: 7a 02                            jp 0x3154387
+3154385: 74 6b                            je 0x31543f2
+3154387: f2 0f 10 47 07                   movsd xmm0, qword ptr [rdi + 7]
+315438c: 4d 8b 8d 70 06 00 00             mov r9, qword ptr [r13 + 0x670]
+3154393: 41 f6 c1 01                      test r9b, 1
+3154397: 75 0f                            jne 0x31543a8
+3154399: 49 c1 e9 20                      shr r9, 0x20
+315439d: 66 0f 57 c9                      xorpd xmm1, xmm1
+31543a1: f2 41 0f 2a c9                   cvtsi2sd xmm1, r9d
+31543a6: eb 06                            jmp 0x31543ae
+31543a8: f2 41 0f 10 49 07                movsd xmm1, qword ptr [r9 + 7]
+31543ae: 66 0f 2e c8                      ucomisd xmm1, xmm0
+31543b2: 7a 02                            jp 0x31543b6
+31543b4: 74 28                            je 0x31543de
+31543b6: 57                               push rdi
+31543b7: 51                               push rcx
+31543b8: 4c 89 45 d8                      mov qword ptr [rbp - 0x28], r8
+31543bc: 49 8b 9d 00 3c 00 00             mov rbx, qword ptr [r13 + 0x3c00]
+31543c3: b8 02 00 00 00                   mov eax, 2
+31543c8: e8 73 30 f9 ff                   call 0x30e7440
+31543cd: 48 8b 4d d8                      mov rcx, qword ptr [rbp - 0x28]
+31543d1: 48 8b e5                         mov rsp, rbp
+31543d4: 5d                               pop rbp
+31543d5: 41 5a                            pop r10
+31543d7: 48 8d 24 cc                      lea rsp, [rsp + rcx*8]
+31543db: 41 52                            push r10
+31543dd: c3                               ret 
+31543de: 49 8b 85 b8 10 00 00             mov rax, qword ptr [r13 + 0x10b8]
+31543e5: 48 8b e5                         mov rsp, rbp
+31543e8: 5d                               pop rbp
+31543e9: 41 5a                            pop r10
+31543eb: 4a 8d 24 c4                      lea rsp, [rsp + r8*8]
+31543ef: 41 52                            push r10
+31543f1: c3                               ret 
+31543f2: 49 8b 85 98 0f 00 00             mov rax, qword ptr [r13 + 0xf98]
+31543f9: 48 8b e5                         mov rsp, rbp
+31543fc: 5d                               pop rbp
+31543fd: 41 5a                            pop r10
+31543ff: 4a 8d 24 c4                      lea rsp, [rsp + r8*8]
+3154403: 41 52                            push r10
+3154405: c3                               ret 
+3154406: 49 8b 85 28 15 00 00             mov rax, qword ptr [r13 + 0x1528]
+315440d: 48 8b e5                         mov rsp, rbp
+3154410: 5d                               pop rbp
+3154411: 41 5a                            pop r10
+3154413: 4a 8d 24 c4                      lea rsp, [rsp + r8*8]
+3154417: 41 52                            push r10
+3154419: c3                               ret 
+315441a: 49 8b 8d d0 1b 00 00             mov rcx, qword ptr [r13 + 0x1bd0]
+3154421: 44 8b 49 0b                      mov r9d, dword ptr [rcx + 0xb]
+3154425: 45 8b d9                         mov r11d, r9d
+3154428: 41 d1 eb                         shr r11d, 1
+315442b: 41 83 eb 01                      sub r11d, 1
+315442f: 40 f6 c7 01                      test dil, 1
+3154433: 75 08                            jne 0x315443d
+3154435: 4c 8b e7                         mov r12, rdi
+3154438: e9 96 00 00 00                   jmp 0x31544d3
+315443d: f2 0f 10 47 07                   movsd xmm0, qword ptr [rdi + 7]
+3154442: f2 44 0f 2c e0                   cvttsd2si r12d, xmm0
+3154447: 66 0f 57 c9                      xorpd xmm1, xmm1
+315444b: f2 41 0f 2a cc                   cvtsi2sd xmm1, r12d
+3154450: 66 0f 2e c8                      ucomisd xmm1, xmm0
+3154454: 7a 15                            jp 0x315446b
+3154456: 75 13                            jne 0x315446b
+3154458: 45 85 e4                         test r12d, r12d
+315445b: 75 72                            jne 0x31544cf
+315445d: 66 49 0f 7e c7                   movq r15, xmm0
+3154462: 49 c1 ef 20                      shr r15, 0x20
+3154466: 45 85 ff                         test r15d, r15d
+3154469: 7d 64                            jge 0x31544cf
+315446b: 44 8b 4f 07                      mov r9d, dword ptr [rdi + 7]
+315446f: 44 8b 67 0b                      mov r12d, dword ptr [rdi + 0xb]
+3154473: 45 8b f9                         mov r15d, r9d
+3154476: 45 31 e7                         xor r15d, r12d
+3154479: 45 23 fb                         and r15d, r11d
+315447c: 47 8d 1c 3f                      lea r11d, [r15 + r15]
+3154480: 4e 8b 7c d9 0f                   mov r15, qword ptr [rcx + r11*8 + 0xf]
+3154485: 41 f6 c7 01                      test r15b, 1
+3154489: 0f 84 f0 02 00 00                je 0x315477f
+315448f: 4d 8b 77 ff                      mov r14, qword ptr [r15 - 1]
+3154493: 4d 39 b5 98 02 00 00             cmp qword ptr [r13 + 0x298], r14
+315449a: 0f 85 df 02 00 00                jne 0x315477f
+31544a0: 45 8b 77 0b                      mov r14d, dword ptr [r15 + 0xb]
+31544a4: 45 39 4f 07                      cmp dword ptr [r15 + 7], r9d
+31544a8: 0f 85 d1 02 00 00                jne 0x315477f
+31544ae: 45 39 e6                         cmp r14d, r12d
+31544b1: 0f 85 c8 02 00 00                jne 0x315477f
+31544b7: 4a 8b 4c d9 17                   mov rcx, qword ptr [rcx + r11*8 + 0x17]
+31544bc: 48 63 f8                         movsxd rdi, eax
+31544bf: 48 8b c1                         mov rax, rcx
+31544c2: 48 8b e5                         mov rsp, rbp
+31544c5: 5d                               pop rbp
+31544c6: 41 5a                            pop r10
+31544c8: 48 8d 24 fc                      lea rsp, [rsp + rdi*8]
+31544cc: 41 52                            push r10
+31544ce: c3                               ret 
+31544cf: 49 c1 e4 20                      shl r12, 0x20
+31544d3: 4d 89 e7                         mov r15, r12
+31544d6: 49 c1 ff 20                      sar r15, 0x20
+31544da: 45 8b f7                         mov r14d, r15d
+31544dd: 45 23 de                         and r11d, r14d
+31544e0: 41 d1 e3                         shl r11d, 1
+31544e3: 4e 39 64 d9 0f                   cmp qword ptr [rcx + r11*8 + 0xf], r12
+31544e8: 0f 84 b4 02 00 00                je 0x31547a2
+31544ee: 41 81 f9 00 80 00 00             cmp r9d, 0x8000
+31544f5: 0f 82 84 02 00 00                jb 0x315477f
+31544fb: 45 85 ff                         test r15d, r15d
+31544fe: 0f 8d f4 00 00 00                jge 0x31545f8
+3154504: 41 f7 de                         neg r14d
+3154507: 41 8b fe                         mov edi, r14d
+315450a: 83 cf 01                         or edi, 1
+315450d: 0f bd ff                         bsr edi, edi
+3154510: 75 05                            jne 0x3154517
+3154512: bf 3f 00 00 00                   mov edi, 0x3f
+3154517: 83 f7 1f                         xor edi, 0x1f
+315451a: 41 b8 1f 00 00 00                mov r8d, 0x1f
+3154520: 44 2b c7                         sub r8d, edi
+3154523: 49 63 f8                         movsxd rdi, r8d
+3154526: 4d 8b 85 10 1d 00 00             mov r8, qword ptr [r13 + 0x1d10]
+315452d: 49 8b 3c f8                      mov rdi, qword ptr [r8 + rdi*8]
+3154531: 49 03 fe                         add rdi, r14
+3154534: 48 c1 ef 20                      shr rdi, 0x20
+3154538: 83 c7 01                         add edi, 1
+315453b: 4c 63 c7                         movsxd r8, edi
+315453e: 4d 8b c8                         mov r9, r8
+3154541: 49 83 c1 10                      add r9, 0x10
+3154545: 0f 80 ac 00 00 00                jo 0x31545f7
+315454b: 49 83 c1 07                      add r9, 7
+315454f: 49 83 e1 f8                      and r9, 0xfffffffffffffff8
+3154553: 4d 8b 7d 48                      mov r15, qword ptr [r13 + 0x48]
+3154557: 4b 8d 1c 0f                      lea rbx, [r15 + r9]
+315455b: 49 39 5d 50                      cmp qword ptr [r13 + 0x50], rbx
+315455f: 0f 86 81 03 00 00                jbe 0x31548e6
+3154565: 49 81 f9 00 00 02 00             cmp r9, 0x20000
+315456c: 0f 83 74 03 00 00                jae 0x31548e6
+3154572: 49 89 5d 48                      mov qword ptr [r13 + 0x48], rbx
+3154576: 49 83 c7 01                      add r15, 1
+315457a: 49 83 e8 01                      sub r8, 1
+315457e: 4b c7 44 0f f7 00 00 00 00       mov qword ptr [r15 + r9 - 9], 0
+3154587: 4d 8b 8d 58 02 00 00             mov r9, qword ptr [r13 + 0x258]
+315458e: 4d 89 4f ff                      mov qword ptr [r15 - 1], r9
+3154592: 41 c7 47 07 03 00 00 00          mov dword ptr [r15 + 7], 3
+315459a: 41 89 7f 0b                      mov dword ptr [r15 + 0xb], edi
+315459e: bf cd cc cc cc                   mov edi, 0xcccccccd
+31545a3: eb 22                            jmp 0x31545c7
+31545a5: 66 0f 1f 84 00 00 00 00 00       nop word ptr [rax + rax]
+31545ae: 66 0f 1f 84 00 00 00 00 00       nop word ptr [rax + rax]
+31545b7: 66 0f 1f 84 00 00 00 00 00       nop word ptr [rax + rax]
+31545c0: 49 83 e8 01                      sub r8, 1
+31545c4: 45 8b f1                         mov r14d, r9d
+31545c7: 4c 8b cf                         mov r9, rdi
+31545ca: 4d 0f af ce                      imul r9, r14
+31545ce: 49 c1 e9 23                      shr r9, 0x23
+31545d2: 45 8b c9                         mov r9d, r9d
+31545d5: 41 6b d9 0a                      imul ebx, r9d, 0xa
+31545d9: 44 2b f3                         sub r14d, ebx
+31545dc: 41 83 ce 30                      or r14d, 0x30
+31545e0: 47 88 74 07 0f                   mov byte ptr [r15 + r8 + 0xf], r14b
+31545e5: 45 85 c9                         test r9d, r9d
+31545e8: 75 d6                            jne 0x31545c0
+31545ea: 41 c6 47 0f 2d                   mov byte ptr [r15 + 0xf], 0x2d
+31545ef: 49 8b ff                         mov rdi, r15
+31545f2: e9 2f 01 00 00                   jmp 0x3154726
+31545f7: cc                               int3 
+31545f8: 41 83 ff 0a                      cmp r15d, 0xa
+31545fc: 0f 8c ee 00 00 00                jl 0x31546f0
+3154602: 41 8b fe                         mov edi, r14d
+3154605: 83 cf 01                         or edi, 1
+3154608: 0f bd ff                         bsr edi, edi
+315460b: 75 05                            jne 0x3154612
+315460d: bf 3f 00 00 00                   mov edi, 0x3f
+3154612: 83 f7 1f                         xor edi, 0x1f
+3154615: 41 b8 1f 00 00 00                mov r8d, 0x1f
+315461b: 44 2b c7                         sub r8d, edi
+315461e: 49 63 f8                         movsxd rdi, r8d
+3154621: 4d 8b 85 10 1d 00 00             mov r8, qword ptr [r13 + 0x1d10]
+3154628: 49 8b 3c f8                      mov rdi, qword ptr [r8 + rdi*8]
+315462c: 49 03 fe                         add rdi, r14
+315462f: 4c 8b c7                         mov r8, rdi
+3154632: 49 c1 e8 20                      shr r8, 0x20
+3154636: 48 c1 ef 20                      shr rdi, 0x20
+315463a: 4d 63 c0                         movsxd r8, r8d
+315463d: 4d 8b c8                         mov r9, r8
+3154640: 49 83 c1 10                      add r9, 0x10
+3154644: 0f 80 a5 00 00 00                jo 0x31546ef
+315464a: 49 83 c1 07                      add r9, 7
+315464e: 49 83 e1 f8                      and r9, 0xfffffffffffffff8
+3154652: 4d 8b 7d 48                      mov r15, qword ptr [r13 + 0x48]
+3154656: 4b 8d 1c 0f                      lea rbx, [r15 + r9]
+315465a: 49 39 5d 50                      cmp qword ptr [r13 + 0x50], rbx
+315465e: 0f 86 cc 02 00 00                jbe 0x3154930
+3154664: 49 81 f9 00 00 02 00             cmp r9, 0x20000
+315466b: 0f 83 bf 02 00 00                jae 0x3154930
+3154671: 49 89 5d 48                      mov qword ptr [r13 + 0x48], rbx
+3154675: 49 83 c7 01                      add r15, 1
+3154679: 49 83 e8 01                      sub r8, 1
+315467d: 4b c7 44 0f f7 00 00 00 00       mov qword ptr [r15 + r9 - 9], 0
+3154686: 4d 8b 8d 58 02 00 00             mov r9, qword ptr [r13 + 0x258]
+315468d: 4d 89 4f ff                      mov qword ptr [r15 - 1], r9
+3154691: 41 c7 47 07 03 00 00 00          mov dword ptr [r15 + 7], 3
+3154699: 4c 8b cf                         mov r9, rdi
+315469c: 41 c1 e1 1a                      shl r9d, 0x1a
+31546a0: 42 8d 1c b5 00 00 00 00          lea ebx, [r14*4]
+31546a8: 41 89 7f 0b                      mov dword ptr [r15 + 0xb], edi
+31546ac: 44 0b cb                         or r9d, ebx
+31546af: 45 89 4f 07                      mov dword ptr [r15 + 7], r9d
+31546b3: bf cd cc cc cc                   mov edi, 0xcccccccd
+31546b8: eb 0d                            jmp 0x31546c7
+31546ba: 66 0f 1f 44 00 00                nop word ptr [rax + rax]
+31546c0: 49 83 e8 01                      sub r8, 1
+31546c4: 45 8b f1                         mov r14d, r9d
+31546c7: 4c 8b cf                         mov r9, rdi
+31546ca: 4d 0f af ce                      imul r9, r14
+31546ce: 49 c1 e9 23                      shr r9, 0x23
+31546d2: 45 8b c9                         mov r9d, r9d
+31546d5: 41 6b d9 0a                      imul ebx, r9d, 0xa
+31546d9: 44 2b f3                         sub r14d, ebx
+31546dc: 41 83 ce 30                      or r14d, 0x30
+31546e0: 47 88 74 07 0f                   mov byte ptr [r15 + r8 + 0xf], r14b
+31546e5: 45 85 c9                         test r9d, r9d
+31546e8: 75 d6                            jne 0x31546c0
+31546ea: 49 8b ff                         mov rdi, r15
+31546ed: eb 37                            jmp 0x3154726
+31546ef: cc                               int3 
+31546f0: 45 85 f6                         test r14d, r14d
+31546f3: 75 09                            jne 0x31546fe
+31546f5: 49 8b bd 28 15 00 00             mov rdi, qword ptr [r13 + 0x1528]
+31546fc: eb 28                            jmp 0x3154726
+31546fe: 41 83 ff 0a                      cmp r15d, 0xa
+3154702: 72 06                            jb 0x315470a
+3154704: 41 8d 7f 57                      lea edi, [r15 + 0x57]
+3154708: eb 04                            jmp 0x315470e
+315470a: 41 8d 7f 30                      lea edi, [r15 + 0x30]
+315470e: 81 ff ff 00 00 00                cmp edi, 0xff
+3154714: 0f 8f 61 02 00 00                jg 0x315497b
+315471a: 4d 8b 85 98 06 00 00             mov r8, qword ptr [r13 + 0x698]
+3154721: 49 8b 7c f8 0f                   mov rdi, qword ptr [r8 + rdi*8 + 0xf]
+3154726: 44 39 59 0b                      cmp dword ptr [rcx + 0xb], r11d
+315472a: 0f 86 c5 02 00 00                jbe 0x31549f5
+3154730: 4e 89 64 d9 0f                   mov qword ptr [rcx + r11*8 + 0xf], r12
+3154735: 44 8b 41 0b                      mov r8d, dword ptr [rcx + 0xb]
+3154739: 4d 8d 4b 01                      lea r9, [r11 + 1]
+315473d: 4d 3b c8                         cmp r9, r8
+3154740: 0f 83 b0 02 00 00                jae 0x31549f6
+3154746: 4e 8d 04 cd 0f 00 00 00          lea r8, [r9*8 + 0xf]
+315474e: 4a 89 3c 01                      mov qword ptr [rcx + r8], rdi
+3154752: 40 f6 c7 01                      test dil, 1
+3154756: 74 14                            je 0x315476c
+3154758: 49 c7 c1 00 00 fc ff             mov r9, 0xfffffffffffc0000
+315475f: 4c 23 c9                         and r9, rcx
+3154762: 41 f6 01 04                      test byte ptr [r9], 4
+3154766: 0f 85 8b 02 00 00                jne 0x31549f7
+315476c: 48 63 c8                         movsxd rcx, eax
+315476f: 48 8b c7                         mov rax, rdi
+3154772: 48 8b e5                         mov rsp, rbp
+3154775: 5d                               pop rbp
+3154776: 41 5a                            pop r10
+3154778: 48 8d 24 cc                      lea rsp, [rsp + rcx*8]
+315477c: 41 52                            push r10
+315477e: c3                               ret 
+315477f: 57                               push rdi
+3154780: 49 8b 9d 48 3e 00 00             mov rbx, qword ptr [r13 + 0x3e48]
+3154787: 33 f6                            xor esi, esi
+3154789: 49 8b c0                         mov rax, r8
+315478c: e8 af 2c f9 ff                   call 0x30e7440
+3154791: 48 63 4d d8                      movsxd rcx, dword ptr [rbp - 0x28]
+3154795: 48 8b e5                         mov rsp, rbp
+3154798: 5d                               pop rbp
+3154799: 41 5a                            pop r10
+315479b: 48 8d 24 cc                      lea rsp, [rsp + rcx*8]
+315479f: 41 52                            push r10
+31547a1: c3                               ret 
+31547a2: 4a 8b 4c d9 17                   mov rcx, qword ptr [rcx + r11*8 + 0x17]
+31547a7: 48 63 f8                         movsxd rdi, eax
+31547aa: 48 8b c1                         mov rax, rcx
+31547ad: 48 8b e5                         mov rsp, rbp
+31547b0: 5d                               pop rbp
+31547b1: 41 5a                            pop r10
+31547b3: 48 8d 24 fc                      lea rsp, [rsp + rdi*8]
+31547b7: 41 52                            push r10
+31547b9: c3                               ret 
+31547ba: 41 b8 01 00 00 00                mov r8d, 1
+31547c0: 48 b9 00 00 00 00 07 01 00 00    movabs rcx, 0x10700000000
+31547ca: 51                               push rcx
+31547cb: 49 8b 9d 60 3d 00 00             mov rbx, qword ptr [r13 + 0x3d60]
+31547d2: 49 8b c0                         mov rax, r8
+31547d5: e8 66 2c f9 ff                   call 0x30e7440
+31547da: cc                               int3 
+31547db: 48 89 75 e0                      mov qword ptr [rbp - 0x20], rsi
+31547df: 49 8b 9d e0 3c 00 00             mov rbx, qword ptr [r13 + 0x3ce0]
+31547e6: 33 c0                            xor eax, eax
+31547e8: 48 8b c8                         mov rcx, rax
+31547eb: e8 50 2c f9 ff                   call 0x30e7440
+31547f0: 48 8b 75 e0                      mov rsi, qword ptr [rbp - 0x20]
+31547f4: 8b 45 d8                         mov eax, dword ptr [rbp - 0x28]
+31547f7: e9 dd f7 ff ff                   jmp 0x3153fd9
+31547fc: 48 b9 00 00 00 00 7a 00 00 00    movabs rcx, 0x7a00000000
+3154806: 51                               push rcx
+3154807: 49 8b 8d d0 1a 00 00             mov rcx, qword ptr [r13 + 0x1ad0]
+315480e: 48 8b 89 6f 05 00 00             mov rcx, qword ptr [rcx + 0x56f]
+3154815: 51                               push rcx
+3154816: 49 8b 8d d0 1a 00 00             mov rcx, qword ptr [r13 + 0x1ad0]
+315481d: 48 8b 89 77 05 00 00             mov rcx, qword ptr [rcx + 0x577]
+3154824: 51                               push rcx
+3154825: 49 8b 9d 98 3d 00 00             mov rbx, qword ptr [r13 + 0x3d98]
+315482c: b8 03 00 00 00                   mov eax, 3
+3154831: e8 0a 2c f9 ff                   call 0x30e7440
+3154836: cc                               int3 
+3154837: 4d 8b 45 48                      mov r8, qword ptr [r13 + 0x48]
+315483b: 4d 8d 48 18                      lea r9, [r8 + 0x18]
+315483f: 48 89 4d c8                      mov qword ptr [rbp - 0x38], rcx
+3154843: 48 89 7d d8                      mov qword ptr [rbp - 0x28], rdi
+3154847: 4d 39 4d 50                      cmp qword ptr [r13 + 0x50], r9
+315484b: 77 0e                            ja 0x315485b
+315484d: ba 18 00 00 00                   mov edx, 0x18
+3154852: e8 29 63 ef ff                   call 0x304ab80
+3154857: 4c 8d 40 ff                      lea r8, [rax - 1]
+315485b: 49 8d 48 18                      lea rcx, [r8 + 0x18]
+315485f: 49 89 4d 48                      mov qword ptr [r13 + 0x48], rcx
+3154863: 49 8d 48 01                      lea rcx, [r8 + 1]
+3154867: 48 c7 41 0f 00 00 00 00          mov qword ptr [rcx + 0xf], 0
+315486f: 49 8b bd d0 04 00 00             mov rdi, qword ptr [r13 + 0x4d0]
+3154876: 48 89 79 ff                      mov qword ptr [rcx - 1], rdi
+315487a: c7 41 0b 01 00 00 00             mov dword ptr [rcx + 0xb], 1
+3154881: c7 41 07 03 00 00 00             mov dword ptr [rcx + 7], 3
+3154888: 8b 7d d8                         mov edi, dword ptr [rbp - 0x28]
+315488b: 66 89 79 0f                      mov word ptr [rcx + 0xf], di
+315488f: 48 8b c1                         mov rax, rcx
+3154892: 48 8b 4d c8                      mov rcx, qword ptr [rbp - 0x38]
+3154896: 48 8b e5                         mov rsp, rbp
+3154899: 5d                               pop rbp
+315489a: 41 5a                            pop r10
+315489c: 48 8d 24 cc                      lea rsp, [rsp + rcx*8]
+31548a0: 41 52                            push r10
+31548a2: c3                               ret 
+31548a3: 48 89 7d e0                      mov qword ptr [rbp - 0x20], rdi
+31548a7: 48 89 4d b0                      mov qword ptr [rbp - 0x50], rcx
+31548ab: 4c 89 4d b8                      mov qword ptr [rbp - 0x48], r9
+31548af: 4c 89 65 c8                      mov qword ptr [rbp - 0x38], r12
+31548b3: 4c 89 45 c0                      mov qword ptr [rbp - 0x40], r8
+31548b7: 4c 89 7d d0                      mov qword ptr [rbp - 0x30], r15
+31548bb: 49 8b d7                         mov rdx, r15
+31548be: e8 bd 62 ef ff                   call 0x304ab80
+31548c3: 4c 8b f0                         mov r14, rax
+31548c6: 44 8b 5d d8                      mov r11d, dword ptr [rbp - 0x28]
+31548ca: 48 8b 7d e0                      mov rdi, qword ptr [rbp - 0x20]
+31548ce: 8b 4d b0                         mov ecx, dword ptr [rbp - 0x50]
+31548d1: 44 8b 4d b8                      mov r9d, dword ptr [rbp - 0x48]
+31548d5: 4c 8b 65 c8                      mov r12, qword ptr [rbp - 0x38]
+31548d9: 44 8b 45 c0                      mov r8d, dword ptr [rbp - 0x40]
+31548dd: 4c 8b 7d d0                      mov r15, qword ptr [rbp - 0x30]
+31548e1: e9 7b f9 ff ff                   jmp 0x3154261
+31548e6: 48 89 4d e0                      mov qword ptr [rbp - 0x20], rcx
+31548ea: 4c 89 65 c8                      mov qword ptr [rbp - 0x38], r12
+31548ee: 4c 89 5d c0                      mov qword ptr [rbp - 0x40], r11
+31548f2: 4c 89 75 d0                      mov qword ptr [rbp - 0x30], r14
+31548f6: 48 89 7d b0                      mov qword ptr [rbp - 0x50], rdi
+31548fa: 4c 89 4d b8                      mov qword ptr [rbp - 0x48], r9
+31548fe: 4c 89 45 a8                      mov qword ptr [rbp - 0x58], r8
+3154902: 49 8b d1                         mov rdx, r9
+3154905: e8 76 62 ef ff                   call 0x304ab80
+315490a: 4c 8b f8                         mov r15, rax
+315490d: 8b 45 d8                         mov eax, dword ptr [rbp - 0x28]
+3154910: 48 8b 4d e0                      mov rcx, qword ptr [rbp - 0x20]
+3154914: 4c 8b 65 c8                      mov r12, qword ptr [rbp - 0x38]
+3154918: 44 8b 5d c0                      mov r11d, dword ptr [rbp - 0x40]
+315491c: 44 8b 75 d0                      mov r14d, dword ptr [rbp - 0x30]
+3154920: 8b 7d b0                         mov edi, dword ptr [rbp - 0x50]
+3154923: 4c 8b 4d b8                      mov r9, qword ptr [rbp - 0x48]
+3154927: 4c 8b 45 a8                      mov r8, qword ptr [rbp - 0x58]
+315492b: e9 4a fc ff ff                   jmp 0x315457a
+3154930: 48 89 4d e0                      mov qword ptr [rbp - 0x20], rcx
+3154934: 4c 89 65 c8                      mov qword ptr [rbp - 0x38], r12
+3154938: 4c 89 5d c0                      mov qword ptr [rbp - 0x40], r11
+315493c: 4c 89 75 b8                      mov qword ptr [rbp - 0x48], r14
+3154940: 48 89 7d d0                      mov qword ptr [rbp - 0x30], rdi
+3154944: 4c 89 4d b0                      mov qword ptr [rbp - 0x50], r9
+3154948: 4c 89 45 a8                      mov qword ptr [rbp - 0x58], r8
+315494c: 49 8b d1                         mov rdx, r9
+315494f: e8 2c 62 ef ff                   call 0x304ab80
+3154954: 4c 8b f8                         mov r15, rax
+3154957: 8b 45 d8                         mov eax, dword ptr [rbp - 0x28]
+315495a: 48 8b 4d e0                      mov rcx, qword ptr [rbp - 0x20]
+315495e: 4c 8b 65 c8                      mov r12, qword ptr [rbp - 0x38]
+3154962: 44 8b 5d c0                      mov r11d, dword ptr [rbp - 0x40]
+3154966: 44 8b 75 b8                      mov r14d, dword ptr [rbp - 0x48]
+315496a: 48 8b 7d d0                      mov rdi, qword ptr [rbp - 0x30]
+315496e: 4c 8b 4d b0                      mov r9, qword ptr [rbp - 0x50]
+3154972: 4c 8b 45 a8                      mov r8, qword ptr [rbp - 0x58]
+3154976: e9 fe fc ff ff                   jmp 0x3154679
+315497b: 4d 8b 45 48                      mov r8, qword ptr [r13 + 0x48]
+315497f: 4d 8d 48 18                      lea r9, [r8 + 0x18]
+3154983: 48 89 4d e0                      mov qword ptr [rbp - 0x20], rcx
+3154987: 4c 89 65 c8                      mov qword ptr [rbp - 0x38], r12
+315498b: 4c 89 5d c0                      mov qword ptr [rbp - 0x40], r11
+315498f: 48 89 7d d0                      mov qword ptr [rbp - 0x30], rdi
+3154993: 4d 39 4d 50                      cmp qword ptr [r13 + 0x50], r9
+3154997: 77 20                            ja 0x31549b9
+3154999: ba 18 00 00 00                   mov edx, 0x18
+315499e: e8 dd 61 ef ff                   call 0x304ab80
+31549a3: 4c 8d 40 ff                      lea r8, [rax - 1]
+31549a7: 8b 7d d0                         mov edi, dword ptr [rbp - 0x30]
+31549aa: 8b 45 d8                         mov eax, dword ptr [rbp - 0x28]
+31549ad: 48 8b 4d e0                      mov rcx, qword ptr [rbp - 0x20]
+31549b1: 4c 8b 65 c8                      mov r12, qword ptr [rbp - 0x38]
+31549b5: 44 8b 5d c0                      mov r11d, dword ptr [rbp - 0x40]
+31549b9: 4d 8d 48 18                      lea r9, [r8 + 0x18]
+31549bd: 4d 89 4d 48                      mov qword ptr [r13 + 0x48], r9
+31549c1: 49 83 c0 01                      add r8, 1
+31549c5: 49 c7 40 0f 00 00 00 00          mov qword ptr [r8 + 0xf], 0
+31549cd: 4d 8b 8d d0 04 00 00             mov r9, qword ptr [r13 + 0x4d0]
+31549d4: 4d 89 48 ff                      mov qword ptr [r8 - 1], r9
+31549d8: 41 c7 40 0b 01 00 00 00          mov dword ptr [r8 + 0xb], 1
+31549e0: 41 c7 40 07 03 00 00 00          mov dword ptr [r8 + 7], 3
+31549e8: 66 41 89 78 0f                   mov word ptr [r8 + 0xf], di
+31549ed: 49 8b f8                         mov rdi, r8
+31549f0: e9 31 fd ff ff                   jmp 0x3154726
+31549f5: cc                               int3 
+31549f6: cc                               int3 
+31549f7: 49 c7 c1 00 00 fc ff             mov r9, 0xfffffffffffc0000
+31549fe: 4c 23 cf                         and r9, rdi
+3154a01: 41 f6 01 02                      test byte ptr [r9], 2
+3154a05: 0f 84 61 fd ff ff                je 0x315476c
+3154a0b: 4e 8d 1c 01                      lea r11, [rcx + r8]
+3154a0f: 53                               push rbx
+3154a10: 57                               push rdi
+3154a11: 48 8b f9                         mov rdi, rcx
+3154a14: 49 8b db                         mov rbx, r11
+3154a17: e8 64 6c ee ff                   call 0x303b680
+3154a1c: 5f                               pop rdi
+3154a1d: 5b                               pop rbx
+3154a1e: e9 49 fd ff ff                   jmp 0x315476c
+3154a23: 48 83 ec 08                      sub rsp, 8
+3154a27: f2 0f 11 04 24                   movsd qword ptr [rsp], xmm0
+3154a2c: e8 cf 42 f9 ff                   call 0x30e8d00
+3154a31: 8b 0c 24                         mov ecx, dword ptr [rsp]
+3154a34: 48 83 c4 08                      add rsp, 8
+3154a38: e9 1d f7 ff ff                   jmp 0x315415a
+3154a3d: 90                               nop 
+3154a3e: 66 90                            nop 
+3154a40: cc                               int3 
+3154a41: cc                               int3 
+3154a42: cc                               int3 
+3154a43: cc                               int3 
+3154a44: cc                               int3 
+3154a45: cc                               int3 
+3154a46: cc                               int3 
+3154a47: cc                               int3 
+3154a48: cc                               int3 
+3154a49: cc                               int3 
+3154a4a: cc                               int3 
+3154a4b: cc                               int3 
+3154a4c: cc                               int3 
+3154a4d: cc                               int3 
+3154a4e: cc                               int3 
+3154a4f: cc                               int3 
+3154a50: cc                               int3 
+3154a51: cc                               int3 
+3154a52: cc                               int3 
+3154a53: cc                               int3 
+3154a54: cc                               int3 
+3154a55: cc                               int3 
+3154a56: cc                               int3 
+3154a57: cc                               int3 
+3154a58: cc                               int3 
+3154a59: cc                               int3 
+3154a5a: cc                               int3 
+3154a5b: cc                               int3 
+3154a5c: cc                               int3 
+3154a5d: cc                               int3 
+3154a5e: cc                               int3 
+3154a5f: cc                               int3 
+3154a60: cc                               int3 
+3154a61: cc                               int3 
+3154a62: cc                               int3 
+3154a63: cc                               int3 
+3154a64: cc                               int3 
+3154a65: cc                               int3 
+3154a66: cc                               int3 
+3154a67: cc                               int3 
+3154a68: cc                               int3 
+3154a69: cc                               int3 
+3154a6a: cc                               int3 
+3154a6b: cc                               int3 
+3154a6c: cc                               int3 
+3154a6d: cc                               int3 
+3154a6e: cc                               int3 
+3154a6f: cc                               int3 
+3154a70: cc                               int3 
+3154a71: cc                               int3 
+3154a72: cc                               int3 
+3154a73: cc                               int3 
+3154a74: cc                               int3 
+3154a75: cc                               int3 
+3154a76: cc                               int3 
+3154a77: cc                               int3 
+3154a78: cc                               int3 
+3154a79: cc                               int3 
+3154a7a: cc                               int3 
+3154a7b: cc                               int3 
+3154a7c: cc                               int3 
+3154a7d: cc                               int3 
+3154a7e: cc                               int3 
+3154a7f: cc                               int3 
+3154a80: 55                               push rbp
+3154a81: 48 89 e5                         mov rbp, rsp
+3154a84: 56                               push rsi
+3154a85: 57                               push rdi
+3154a86: 50                               push rax
+3154a87: 49 3b 65 a0                      cmp rsp, qword ptr [r13 - 0x60]
+3154a8b: 76 64                            jbe 0x3154af1
+3154a8d: 48 8b 55 18                      mov rdx, qword ptr [rbp + 0x18]
+3154a91: f6 c2 01                         test dl, 1
+3154a94: 75 21                            jne 0x3154ab7
+3154a96: 49 8b 85 08 02 00 00             mov rax, qword ptr [r13 + 0x208]
+3154a9d: 48 8b 4d e8                      mov rcx, qword ptr [rbp - 0x18]
+3154aa1: 48 8b e5                         mov rsp, rbp
+3154aa4: 5d                               pop rbp
+3154aa5: 48 83 f9 02                      cmp rcx, 2
+3154aa9: 7f 03                            jg 0x3154aae
+3154aab: c2 10 00                         ret 0x10
+3154aae: 41 5a                            pop r10
+3154ab0: 48 8d 24 cc                      lea rsp, [rsp + rcx*8]
+3154ab4: 41 52                            push r10
+3154ab6: c3                               ret 
+3154ab7: 48 8b 4a ff                      mov rcx, qword ptr [rdx - 1]
+3154abb: 49 39 8d 98 02 00 00             cmp qword ptr [r13 + 0x298], rcx
+3154ac2: 74 09                            je 0x3154acd
+3154ac4: 49 8b 85 10 02 00 00             mov rax, qword ptr [r13 + 0x210]
+3154acb: eb d0                            jmp 0x3154a9d
+3154acd: f2 0f 10 42 07                   movsd xmm0, qword ptr [rdx + 7]
+3154ad2: 0f 28 c8                         movaps xmm1, xmm0
+3154ad5: f2 0f 5c c8                      subsd xmm1, xmm0
+3154ad9: 66 0f 2e c9                      ucomisd xmm1, xmm1
+3154add: 7b 09                            jnp 0x3154ae8
+3154adf: 49 8b 85 10 02 00 00             mov rax, qword ptr [r13 + 0x210]
+3154ae6: eb b5                            jmp 0x3154a9d
+3154ae8: 49 8b 85 08 02 00 00             mov rax, qword ptr [r13 + 0x208]
+3154aef: eb ac                            jmp 0x3154a9d
+3154af1: 49 8b 9d e0 3c 00 00             mov rbx, qword ptr [r13 + 0x3ce0]
+3154af8: 33 c0                            xor eax, eax
+3154afa: e8 41 29 f9 ff                   call 0x30e7440
+3154aff: eb 8c                            jmp 0x3154a8d
+3154b01: 90                               nop 
+3154b02: 66 90                            nop 
+3154b04: cc                               int3 
+3154b05: cc                               int3 
+3154b06: cc                               int3 
+3154b07: cc                               int3 
+3154b08: cc                               int3 
+3154b09: cc                               int3 
+3154b0a: cc                               int3 
+3154b0b: cc                               int3 
+3154b0c: cc                               int3 
+3154b0d: cc                               int3 
+3154b0e: cc                               int3 
+3154b0f: cc                               int3 
+3154b10: cc                               int3 
+3154b11: cc                               int3 
+3154b12: cc                               int3 
+3154b13: cc                               int3 
+3154b14: cc                               int3 
+3154b15: cc                               int3 
+3154b16: cc                               int3 
+3154b17: cc                               int3 
+3154b18: cc                               int3 
+3154b19: cc                               int3 
+3154b1a: cc                               int3 
+3154b1b: cc                               int3 
+3154b1c: cc                               int3 
+3154b1d: cc                               int3 
+3154b1e: cc                               int3 
+3154b1f: cc                               int3 
+3154b20: cc                               int3 
+3154b21: cc                               int3 
+3154b22: cc                               int3 
+3154b23: cc                               int3 
+3154b24: cc                               int3 
+3154b25: cc                               int3 
+3154b26: cc                               int3 
+3154b27: cc                               int3 
+3154b28: cc                               int3 
+3154b29: cc                               int3 
+3154b2a: cc                               int3 
+3154b2b: cc                               int3 
+3154b2c: cc                               int3 
+3154b2d: cc                               int3 
+3154b2e: cc                               int3 
+3154b2f: cc                               int3 
+3154b30: cc                               int3 
+3154b31: cc                               int3 
+3154b32: cc                               int3 
+3154b33: cc                               int3 
+3154b34: cc                               int3 
+3154b35: cc                               int3 
+3154b36: cc                               int3 
+3154b37: cc                               int3 
+3154b38: cc                               int3 
+3154b39: cc                               int3 
+3154b3a: cc                               int3 
+3154b3b: cc                               int3 
+3154b3c: cc                               int3 
+3154b3d: cc                               int3 
+3154b3e: cc                               int3 
+3154b3f: cc                               int3 
+3154b40: 55                               push rbp
+3154b41: 48 89 e5                         mov rbp, rsp
+3154b44: 56                               push rsi
+3154b45: 57                               push rdi
+3154b46: 50                               push rax
+3154b47: 49 3b 65 a0                      cmp rsp, qword ptr [r13 - 0x60]
+3154b4b: 0f 86 26 01 00 00                jbe 0x3154c77
+3154b51: 48 8b 55 18                      mov rdx, qword ptr [rbp + 0x18]
+3154b55: f6 c2 01                         test dl, 1
+3154b58: 0f 84 10 01 00 00                je 0x3154c6e
+3154b5e: 48 8b 4a ff                      mov rcx, qword ptr [rdx - 1]
+3154b62: 49 39 8d 98 02 00 00             cmp qword ptr [r13 + 0x298], rcx
+3154b69: 74 07                            je 0x3154b72
+3154b6b: 33 c0                            xor eax, eax
+3154b6d: e9 d7 00 00 00                   jmp 0x3154c49
+3154b72: f2 0f 10 42 07                   movsd xmm0, qword ptr [rdx + 7]
+3154b77: 66 0f 57 c9                      xorpd xmm1, xmm1
+3154b7b: 66 0f 2e c1                      ucomisd xmm0, xmm1
+3154b7f: 0f 87 73 00 00 00                ja 0x3154bf8
+3154b85: 49 ba 00 00 00 00 00 00 30 c3    movabs r10, 0xc330000000000000
+3154b8f: 66 49 0f 6e d2                   movq xmm2, r10
+3154b94: 66 0f 2e d0                      ucomisd xmm2, xmm0
+3154b98: 73 06                            jae 0x3154ba0
+3154b9a: 66 0f 2e c8                      ucomisd xmm1, xmm0
+3154b9e: 77 08                            ja 0x3154ba8
+3154ba0: 0f 28 d0                         movaps xmm2, xmm0
+3154ba3: e9 8d 00 00 00                   jmp 0x3154c35
+3154ba8: 0f 28 d0                         movaps xmm2, xmm0
+3154bab: 4d 8b 95 f0 1c 00 00             mov r10, qword ptr [r13 + 0x1cf0]
+3154bb2: 41 0f 57 12                      xorps xmm2, xmmword ptr [r10]
+3154bb6: 49 ba 00 00 00 00 00 00 30 43    movabs r10, 0x4330000000000000
+3154bc0: 66 49 0f 6e da                   movq xmm3, r10
+3154bc5: 0f 28 e2                         movaps xmm4, xmm2
+3154bc8: f2 0f 58 e3                      addsd xmm4, xmm3
+3154bcc: f2 0f 5c e3                      subsd xmm4, xmm3
+3154bd0: 66 0f 2e e2                      ucomisd xmm4, xmm2
+3154bd4: 76 12                            jbe 0x3154be8
+3154bd6: 66 0f 76 d2                      pcmpeqd xmm2, xmm2
+3154bda: 66 0f 73 f2 36                   psllq xmm2, 0x36
+3154bdf: 66 0f 73 d2 02                   psrlq xmm2, 2
+3154be4: f2 0f 5c e2                      subsd xmm4, xmm2
+3154be8: 4d 8b 95 f0 1c 00 00             mov r10, qword ptr [r13 + 0x1cf0]
+3154bef: 41 0f 57 22                      xorps xmm4, xmmword ptr [r10]
+3154bf3: 0f 29 e2                         movaps xmm2, xmm4
+3154bf6: eb 3d                            jmp 0x3154c35
+3154bf8: 4c 8b 15 b9 ff ff ff             mov r10, qword ptr [rip - 0x47]
+3154bff: 66 49 0f 6e d2                   movq xmm2, r10
+3154c04: 66 0f 2e c2                      ucomisd xmm0, xmm2
+3154c08: 73 96                            jae 0x3154ba0
+3154c0a: 0f 28 d8                         movaps xmm3, xmm0
+3154c0d: f2 0f 58 da                      addsd xmm3, xmm2
+3154c11: f2 0f 5c da                      subsd xmm3, xmm2
+3154c15: 66 0f 2e d8                      ucomisd xmm3, xmm0
+3154c19: 77 05                            ja 0x3154c20
+3154c1b: 0f 28 d3                         movaps xmm2, xmm3
+3154c1e: eb 15                            jmp 0x3154c35
+3154c20: 66 0f 76 d2                      pcmpeqd xmm2, xmm2
+3154c24: 66 0f 73 f2 36                   psllq xmm2, 0x36
+3154c29: 66 0f 73 d2 02                   psrlq xmm2, 2
+3154c2e: f2 0f 5c da                      subsd xmm3, xmm2
+3154c32: 0f 28 d3                         movaps xmm2, xmm3
+3154c35: f2 0f 5c c2                      subsd xmm0, xmm2
+3154c39: 66 0f 2e c8                      ucomisd xmm1, xmm0
+3154c3d: 7b 04                            jnp 0x3154c43
+3154c3f: 33 c0                            xor eax, eax
+3154c41: eb 06                            jmp 0x3154c49
+3154c43: 0f 94 c0                         sete al
+3154c46: 0f b6 c0                         movzx eax, al
+3154c49: 85 c0                            test eax, eax
+3154c4b: 75 21                            jne 0x3154c6e
+3154c4d: 49 8b 85 10 02 00 00             mov rax, qword ptr [r13 + 0x210]
+3154c54: 48 8b 4d e8                      mov rcx, qword ptr [rbp - 0x18]
+3154c58: 48 8b e5                         mov rsp, rbp
+3154c5b: 5d                               pop rbp
+3154c5c: 48 83 f9 02                      cmp rcx, 2
+3154c60: 7f 03                            jg 0x3154c65
+3154c62: c2 10 00                         ret 0x10
+3154c65: 41 5a                            pop r10
+3154c67: 48 8d 24 cc                      lea rsp, [rsp + rcx*8]
+3154c6b: 41 52                            push r10
+3154c6d: c3                               ret 
+3154c6e: 49 8b 85 08 02 00 00             mov rax, qword ptr [r13 + 0x208]
+3154c75: eb dd                            jmp 0x3154c54
+3154c77: 33 c0                            xor eax, eax
+3154c79: 49 8b 9d e0 3c 00 00             mov rbx, qword ptr [r13 + 0x3ce0]
+3154c80: e8 bb 27 f9 ff                   call 0x30e7440
+3154c85: e9 c7 fe ff ff                   jmp 0x3154b51
+3154c8a: 90                               nop 
+3154c8b: 90                               nop 
+3154c8c: cc                               int3 
+3154c8d: cc                               int3 
+3154c8e: cc                               int3 
+3154c8f: cc                               int3 
+3154c90: cc                               int3 
+3154c91: cc                               int3 
+3154c92: cc                               int3 
+3154c93: cc                               int3 
+3154c94: cc                               int3 
+3154c95: cc                               int3 
+3154c96: cc                               int3 
+3154c97: cc                               int3 
+3154c98: cc                               int3 
+3154c99: cc                               int3 
+3154c9a: cc                               int3 
+3154c9b: cc                               int3 
+3154c9c: cc                               int3 
+3154c9d: cc                               int3 
+3154c9e: cc                               int3 
+3154c9f: cc                               int3 
+3154ca0: cc                               int3 
+3154ca1: cc                               int3 
+3154ca2: cc                               int3 
+3154ca3: cc                               int3 
+3154ca4: cc                               int3 
+3154ca5: cc                               int3 
+3154ca6: cc                               int3 
+3154ca7: cc                               int3 
+3154ca8: cc                               int3 
+3154ca9: cc                               int3 
+3154caa: cc                               int3 
+3154cab: cc                               int3 
+3154cac: cc                               int3 
+3154cad: cc                               int3 
+3154cae: cc                               int3 
+3154caf: cc                               int3 
+3154cb0: cc                               int3 
+3154cb1: cc                               int3 
+3154cb2: cc                               int3 
+3154cb3: cc                               int3 
+3154cb4: cc                               int3 
+3154cb5: cc                               int3 
+3154cb6: cc                               int3 
+3154cb7: cc                               int3 
+3154cb8: cc                               int3 
+3154cb9: cc                               int3 
+3154cba: cc                               int3 
+3154cbb: cc                               int3 
+3154cbc: cc                               int3 
+3154cbd: cc                               int3 
+3154cbe: cc                               int3 
+3154cbf: cc                               int3 
+3154cc0: 55                               push rbp
+3154cc1: 48 89 e5                         mov rbp, rsp
+3154cc4: 56                               push rsi
+3154cc5: 57                               push rdi
+3154cc6: 50                               push rax
+3154cc7: 49 3b 65 a0                      cmp rsp, qword ptr [r13 - 0x60]
+3154ccb: 76 5d                            jbe 0x3154d2a
+3154ccd: 48 8b 55 18                      mov rdx, qword ptr [rbp + 0x18]
+3154cd1: f6 c2 01                         test dl, 1
+3154cd4: 75 21                            jne 0x3154cf7
+3154cd6: 49 8b 85 10 02 00 00             mov rax, qword ptr [r13 + 0x210]
+3154cdd: 48 8b 4d e8                      mov rcx, qword ptr [rbp - 0x18]
+3154ce1: 48 8b e5                         mov rsp, rbp
+3154ce4: 5d                               pop rbp
+3154ce5: 48 83 f9 02                      cmp rcx, 2
+3154ce9: 7f 03                            jg 0x3154cee
+3154ceb: c2 10 00                         ret 0x10
+3154cee: 41 5a                            pop r10
+3154cf0: 48 8d 24 cc                      lea rsp, [rsp + rcx*8]
+3154cf4: 41 52                            push r10
+3154cf6: c3                               ret 
+3154cf7: 48 8b 4a ff                      mov rcx, qword ptr [rdx - 1]
+3154cfb: 49 39 8d 98 02 00 00             cmp qword ptr [r13 + 0x298], rcx
+3154d02: 74 09                            je 0x3154d0d
+3154d04: 49 8b 85 10 02 00 00             mov rax, qword ptr [r13 + 0x210]
+3154d0b: eb d0                            jmp 0x3154cdd
+3154d0d: f2 0f 10 42 07                   movsd xmm0, qword ptr [rdx + 7]
+3154d12: 66 0f 2e c0                      ucomisd xmm0, xmm0
+3154d16: 7b 09                            jnp 0x3154d21
+3154d18: 49 8b 85 08 02 00 00             mov rax, qword ptr [r13 + 0x208]
+3154d1f: eb bc                            jmp 0x3154cdd
+3154d21: 49 8b 85 10 02 00 00             mov rax, qword ptr [r13 + 0x210]
+3154d28: eb b3                            jmp 0x3154cdd
+3154d2a: 49 8b 9d e0 3c 00 00             mov rbx, qword ptr [r13 + 0x3ce0]
+3154d31: 33 c0                            xor eax, eax
+3154d33: e8 08 27 f9 ff                   call 0x30e7440
+3154d38: eb 93                            jmp 0x3154ccd
+3154d3a: 90                               nop 
+3154d3b: 90                               nop 
+3154d3c: cc                               int3 
+3154d3d: cc                               int3 
+3154d3e: cc                               int3 
+3154d3f: cc                               int3 
+3154d40: 55                               push rbp
+3154d41: 48 89 e5                         mov rbp, rsp
+3154d44: 56                               push rsi
+3154d45: 57                               push rdi
+3154d46: 50                               push rax
+3154d47: 49 3b 65 a0                      cmp rsp, qword ptr [r13 - 0x60]
+3154d4b: 0f 86 45 01 00 00                jbe 0x3154e96
+3154d51: 48 8b 55 18                      mov rdx, qword ptr [rbp + 0x18]
+3154d55: f6 c2 01                         test dl, 1
+3154d58: 0f 84 2f 01 00 00                je 0x3154e8d
+3154d5e: 48 8b 4a ff                      mov rcx, qword ptr [rdx - 1]
+3154d62: 49 39 8d 98 02 00 00             cmp qword ptr [r13 + 0x298], rcx
+3154d69: 74 07                            je 0x3154d72
+3154d6b: 33 c0                            xor eax, eax
+3154d6d: e9 f6 00 00 00                   jmp 0x3154e68
+3154d72: f2 0f 10 42 07                   movsd xmm0, qword ptr [rdx + 7]
+3154d77: 66 0f 57 c9                      xorpd xmm1, xmm1
+3154d7b: 66 0f 2e c1                      ucomisd xmm0, xmm1
+3154d7f: 0f 87 73 00 00 00                ja 0x3154df8
+3154d85: 49 ba 00 00 00 00 00 00 30 c3    movabs r10, 0xc330000000000000
+3154d8f: 66 49 0f 6e d2                   movq xmm2, r10
+3154d94: 66 0f 2e d0                      ucomisd xmm2, xmm0
+3154d98: 73 06                            jae 0x3154da0
+3154d9a: 66 0f 2e c8                      ucomisd xmm1, xmm0
+3154d9e: 77 08                            ja 0x3154da8
+3154da0: 0f 28 d0                         movaps xmm2, xmm0
+3154da3: e9 8d 00 00 00                   jmp 0x3154e35
+3154da8: 0f 28 d0                         movaps xmm2, xmm0
+3154dab: 4d 8b 95 f0 1c 00 00             mov r10, qword ptr [r13 + 0x1cf0]
+3154db2: 41 0f 57 12                      xorps xmm2, xmmword ptr [r10]
+3154db6: 49 ba 00 00 00 00 00 00 30 43    movabs r10, 0x4330000000000000
+3154dc0: 66 49 0f 6e da                   movq xmm3, r10
+3154dc5: 0f 28 e2                         movaps xmm4, xmm2
+3154dc8: f2 0f 58 e3                      addsd xmm4, xmm3
+3154dcc: f2 0f 5c e3                      subsd xmm4, xmm3
+3154dd0: 66 0f 2e e2                      ucomisd xmm4, xmm2
+3154dd4: 76 12                            jbe 0x3154de8
+3154dd6: 66 0f 76 d2                      pcmpeqd xmm2, xmm2
+3154dda: 66 0f 73 f2 36                   psllq xmm2, 0x36
+3154ddf: 66 0f 73 d2 02                   psrlq xmm2, 2
+3154de4: f2 0f 5c e2                      subsd xmm4, xmm2
+3154de8: 4d 8b 95 f0 1c 00 00             mov r10, qword ptr [r13 + 0x1cf0]
+3154def: 41 0f 57 22                      xorps xmm4, xmmword ptr [r10]
+3154df3: 0f 29 e2                         movaps xmm2, xmm4
+3154df6: eb 3d                            jmp 0x3154e35
+3154df8: 4c 8b 15 b9 ff ff ff             mov r10, qword ptr [rip - 0x47]
+3154dff: 66 49 0f 6e d2                   movq xmm2, r10
+3154e04: 66 0f 2e c2                      ucomisd xmm0, xmm2
+3154e08: 73 96                            jae 0x3154da0
+3154e0a: 0f 28 d8                         movaps xmm3, xmm0
+3154e0d: f2 0f 58 da                      addsd xmm3, xmm2
+3154e11: f2 0f 5c da                      subsd xmm3, xmm2
+3154e15: 66 0f 2e d8                      ucomisd xmm3, xmm0
+3154e19: 77 05                            ja 0x3154e20
+3154e1b: 0f 28 d3                         movaps xmm2, xmm3
+3154e1e: eb 15                            jmp 0x3154e35
+3154e20: 66 0f 76 d2                      pcmpeqd xmm2, xmm2
+3154e24: 66 0f 73 f2 36                   psllq xmm2, 0x36
+3154e29: 66 0f 73 d2 02                   psrlq xmm2, 2
+3154e2e: f2 0f 5c da                      subsd xmm3, xmm2
+3154e32: 0f 28 d3                         movaps xmm2, xmm3
+3154e35: f2 0f 5c c2                      subsd xmm0, xmm2
+3154e39: 66 0f 2e c8                      ucomisd xmm1, xmm0
+3154e3d: 7a 02                            jp 0x3154e41
+3154e3f: 74 04                            je 0x3154e45
+3154e41: 33 c0                            xor eax, eax
+3154e43: eb 23                            jmp 0x3154e68
+3154e45: 4d 8b 95 e8 1c 00 00             mov r10, qword ptr [r13 + 0x1ce8]
+3154e4c: 41 0f 54 12                      andps xmm2, xmmword ptr [r10]
+3154e50: 49 ba ff ff ff ff ff ff 3f 43    movabs r10, 0x433fffffffffffff
+3154e5a: 66 49 0f 6e c2                   movq xmm0, r10
+3154e5f: 33 c0                            xor eax, eax
+3154e61: 66 0f 2e c2                      ucomisd xmm0, xmm2
+3154e65: 0f 93 c0                         setae al
+3154e68: 85 c0                            test eax, eax
+3154e6a: 75 21                            jne 0x3154e8d
+3154e6c: 49 8b 85 10 02 00 00             mov rax, qword ptr [r13 + 0x210]
+3154e73: 48 8b 4d e8                      mov rcx, qword ptr [rbp - 0x18]
+3154e77: 48 8b e5                         mov rsp, rbp
+3154e7a: 5d                               pop rbp
+3154e7b: 48 83 f9 02                      cmp rcx, 2
+3154e7f: 7f 03                            jg 0x3154e84
+3154e81: c2 10 00                         ret 0x10
+3154e84: 41 5a                            pop r10
+3154e86: 48 8d 24 cc                      lea rsp, [rsp + rcx*8]
+3154e8a: 41 52                            push r10
+3154e8c: c3                               ret 
+3154e8d: 49 8b 85 08 02 00 00             mov rax, qword ptr [r13 + 0x208]
+3154e94: eb dd                            jmp 0x3154e73
+3154e96: 33 c0                            xor eax, eax
+3154e98: 49 8b 9d e0 3c 00 00             mov rbx, qword ptr [r13 + 0x3ce0]
+3154e9f: e8 9c 25 f9 ff                   call 0x30e7440
+3154ea4: e9 a8 fe ff ff                   jmp 0x3154d51
+3154ea9: 90                               nop 
+3154eaa: 66 90                            nop 
+3154eac: cc                               int3 
+3154ead: cc                               int3 
+3154eae: cc                               int3 
+3154eaf: cc                               int3 
+3154eb0: cc                               int3 
+3154eb1: cc                               int3 
+3154eb2: cc                               int3 
+3154eb3: cc                               int3 
+3154eb4: cc                               int3 
+3154eb5: cc                               int3 
+3154eb6: cc                               int3 
+3154eb7: cc                               int3 
+3154eb8: cc                               int3 
+3154eb9: cc                               int3 
+3154eba: cc                               int3 
+3154ebb: cc                               int3 
+3154ebc: cc                               int3 
+3154ebd: cc                               int3 
+3154ebe: cc                               int3 
+3154ebf: cc                               int3 
+3154ec0: 55                               push rbp
+3154ec1: 48 89 e5                         mov rbp, rsp
+3154ec4: 56                               push rsi
+3154ec5: 57                               push rdi
+3154ec6: 50                               push rax
+3154ec7: 48 83 ec 08                      sub rsp, 8
+3154ecb: 49 3b 65 a0                      cmp rsp, qword ptr [r13 - 0x60]
+3154ecf: 76 6a                            jbe 0x3154f3b
+3154ed1: 48 8b 45 10                      mov rax, qword ptr [rbp + 0x10]
+3154ed5: eb 2d                            jmp 0x3154f04
+3154ed7: 66 0f 1f 84 00 00 00 00 00       nop word ptr [rax + rax]
+3154ee0: 66 0f 1f 84 00 00 00 00 00       nop word ptr [rax + rax]
+3154ee9: 66 0f 1f 84 00 00 00 00 00       nop word ptr [rax + rax]
+3154ef2: 66 0f 1f 84 00 00 00 00 00       nop word ptr [rax + rax]
+3154efb: 0f 1f 44 00 00                   nop dword ptr [rax + rax]
+3154f00: 48 8b 40 17                      mov rax, qword ptr [rax + 0x17]
+3154f04: a8 01                            test al, 1
+3154f06: 74 19                            je 0x3154f21
+3154f08: 48 8b 50 ff                      mov rdx, qword ptr [rax - 1]
+3154f0c: 0f b7 4a 0b                      movzx ecx, word ptr [rdx + 0xb]
+3154f10: 81 f9 11 04 00 00                cmp ecx, 0x411
+3154f16: 74 e8                            je 0x3154f00
+3154f18: 49 39 95 98 02 00 00             cmp qword ptr [r13 + 0x298], rdx
+3154f1f: 75 35                            jne 0x3154f56
+3154f21: 48 8b 4d e8                      mov rcx, qword ptr [rbp - 0x18]
+3154f25: 48 8b e5                         mov rsp, rbp
+3154f28: 5d                               pop rbp
+3154f29: 48 83 f9 01                      cmp rcx, 1
+3154f2d: 7f 03                            jg 0x3154f32
+3154f2f: c2 08 00                         ret 8
+3154f32: 41 5a                            pop r10
+3154f34: 48 8d 24 cc                      lea rsp, [rsp + rcx*8]
+3154f38: 41 52                            push r10
+3154f3a: c3                               ret 
+3154f3b: 48 89 75 e0                      mov qword ptr [rbp - 0x20], rsi
+3154f3f: 49 8b 9d e0 3c 00 00             mov rbx, qword ptr [r13 + 0x3ce0]
+3154f46: 33 c0                            xor eax, eax
+3154f48: e8 f3 24 f9 ff                   call 0x30e7440
+3154f4d: 48 8b 75 e0                      mov rsi, qword ptr [rbp - 0x20]
+3154f51: e9 7b ff ff ff                   jmp 0x3154ed1
+3154f56: 48 ba 00 00 00 00 7a 00 00 00    movabs rdx, 0x7a00000000
+3154f60: 52                               push rdx
+3154f61: 49 8b 95 d0 1a 00 00             mov rdx, qword ptr [r13 + 0x1ad0]
+3154f68: 48 8b 92 7f 05 00 00             mov rdx, qword ptr [rdx + 0x57f]
+3154f6f: 52                               push rdx
+3154f70: 49 8b 95 d0 1a 00 00             mov rdx, qword ptr [r13 + 0x1ad0]
+3154f77: 48 8b 92 77 05 00 00             mov rdx, qword ptr [rdx + 0x577]
+3154f7e: 52                               push rdx
+3154f7f: 49 8b 9d 98 3d 00 00             mov rbx, qword ptr [r13 + 0x3d98]
+3154f86: b8 03 00 00 00                   mov eax, 3
+3154f8b: e8 b0 24 f9 ff                   call 0x30e7440
+3154f90: cc                               int3 
+3154f91: 90                               nop 
+3154f92: 66 90                            nop 
+3154f94: cc                               int3 
+3154f95: cc                               int3 
+3154f96: cc                               int3 
+3154f97: cc                               int3 
+3154f98: cc                               int3 
+3154f99: cc                               int3 
+3154f9a: cc                               int3 
+3154f9b: cc                               int3 
+3154f9c: cc                               int3 
+3154f9d: cc                               int3 
+3154f9e: cc                               int3 
+3154f9f: cc                               int3 
+3154fa0: cc                               int3 
+3154fa1: cc                               int3 
+3154fa2: cc                               int3 
+3154fa3: cc                               int3 
+3154fa4: cc                               int3 
+3154fa5: cc                               int3 
+3154fa6: cc                               int3 
+3154fa7: cc                               int3 
+3154fa8: cc                               int3 
+3154fa9: cc                               int3 
+3154faa: cc                               int3 
+3154fab: cc                               int3 
+3154fac: cc                               int3 
+3154fad: cc                               int3 
+3154fae: cc                               int3 
+3154faf: cc                               int3 
+3154fb0: cc                               int3 
+3154fb1: cc                               int3 
+3154fb2: cc                               int3 
+3154fb3: cc                               int3 
+3154fb4: cc                               int3 
+3154fb5: cc                               int3 
+3154fb6: cc                               int3 
+3154fb7: cc                               int3 
+3154fb8: cc                               int3 
+3154fb9: cc                               int3 
+3154fba: cc                               int3 
+3154fbb: cc                               int3 
+3154fbc: cc                               int3 
+3154fbd: cc                               int3 
+3154fbe: cc                               int3 
+3154fbf: cc                               int3 
+3154fc0: 55                               push rbp
+3154fc1: 48 89 e5                         mov rbp, rsp
+3154fc4: 56                               push rsi
+3154fc5: 57                               push rdi
+3154fc6: 50                               push rax
+3154fc7: 48 83 ec 08                      sub rsp, 8
+3154fcb: 49 3b 65 a0                      cmp rsp, qword ptr [r13 - 0x60]
+3154fcf: 0f 86 9d 00 00 00                jbe 0x3155072
+3154fd5: 48 8b 45 18                      mov rax, qword ptr [rbp + 0x18]
+3154fd9: a8 01                            test al, 1
+3154fdb: 75 1a                            jne 0x3154ff7
+3154fdd: 48 8b 4d e8                      mov rcx, qword ptr [rbp - 0x18]
+3154fe1: 48 8b e5                         mov rsp, rbp
+3154fe4: 5d                               pop rbp
+3154fe5: 48 83 f9 02                      cmp rcx, 2
+3154fe9: 7f 03                            jg 0x3154fee
+3154feb: c2 10 00                         ret 0x10
+3154fee: 41 5a                            pop r10
+3154ff0: 48 8d 24 cc                      lea rsp, [rsp + rcx*8]
+3154ff4: 41 52                            push r10
+3154ff6: c3                               ret 
+3154ff7: 48 8b 50 ff                      mov rdx, qword ptr [rax - 1]
+3154ffb: 49                               .byte 0x49
+3154ffc: 39                               .byte 0x39
+3154ffd: 95                               xchg ebp, eax
+3154ffe: 98                               cwde 
+3154fff: 02                               .byte 0x02

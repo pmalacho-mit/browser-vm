@@ -150,9 +150,16 @@ export class AgentClient {
  * /sbin directory (an unexpected image), leaving the image as it is.
  */
 export async function installAgent(fs9p: V86Filesystem, binary: Uint8Array): Promise<boolean> {
-  const sbin = fs9p.SearchPath("/sbin");
+  // On a merged-/usr image (Debian), /sbin is a symlink to usr/sbin: v86's
+  // SearchPath doesn't follow it, so resolve one level by hand.
+  let dir = "/sbin", sbin = fs9p.SearchPath(dir);
+  if (sbin.id !== -1 && (fs9p.GetInode(sbin.id).mode & 0xf000) === 0xa000) {
+    const target = fs9p.GetInode(sbin.id).symlink;
+    dir = target.startsWith("/") ? target : `/${target}`;
+    sbin = fs9p.SearchPath(dir);
+  }
   if (sbin.id === -1) return false;
-  let id = fs9p.SearchPath("/sbin/vm-agent").id;
+  let id = fs9p.SearchPath(`${dir}/vm-agent`).id;
   if (id === -1) id = fs9p.CreateFile("vm-agent", sbin.id);
   await fs9p.ChangeSize(id, binary.length);
   await fs9p.Write(id, 0, binary.length, binary);

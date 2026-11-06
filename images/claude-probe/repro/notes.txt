@@ -1,0 +1,2 @@
+CompileError: WebAssembly.Module(): Compiling function #30 failed: i64.store[0] expected type i32, found i64.load of type i64 @+110835
+index=242 start=0x3154000 (physical; block entry at offset 0x0 of the page dump) stateFlags=0x16 len=230976
