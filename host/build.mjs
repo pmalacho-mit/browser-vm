@@ -30,7 +30,7 @@ export default function hostPart() {
           // v86 also has Node code paths (guarded at runtime); leave those imports alone.
           external: ["node:*", ...builtinModules],
           alias: { v86: ctx.machine.lib },
-          define: { __VM_MACHINE__: JSON.stringify({ arch: ctx.machine.arch, agent: ctx.machine.runsGo }) },
+          define: { __VM_MACHINE__: JSON.stringify({ arch: ctx.machine.arch }) },
         },
       },
       {

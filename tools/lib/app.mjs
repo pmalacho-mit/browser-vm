@@ -148,9 +148,9 @@ export function assembleVm(ctx) {
   copy(m.firmware.seabios, "seabios.bin");
   copy(m.firmware.vgabios, "vgabios.bin");
   copy(m.kernel, "bzImage");
-  const rt = runtimeAssets(m.arch, { agent: m.runsGo });
+  const rt = runtimeAssets(m.arch);
   copy(rt.tls, "tls.wasm");
-  if (rt.agent) copy(rt.agent, "vm-agent");
+  copy(rt.agent, "vm-agent");
   const base = baseImage(m.arch);
   copy(path.join(base, "fs.json"), "fs.json");
   fs.cpSync(path.join(base, "rootfs"), path.join(vm, "rootfs"), { recursive: true });

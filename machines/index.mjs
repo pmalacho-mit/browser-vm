@@ -25,7 +25,6 @@ const v86Build = path.join(
  * @property {string} description
  * @property {string} emulatorDir  holds libv86.mjs, v86.wasm, v86-fallback.wasm
  * @property {string[]} kernel     candidates, first existing wins
- * @property {boolean} runsGo      whether Go programs (the guest agent) run on it
  */
 
 /** @type {Record<string, MachineSpec>} */
@@ -37,7 +36,6 @@ export const MACHINES = {
       path.join(root, "build/kernel/bzImage"),
       path.join(here, "i686/prebuilt/bzImage"),
     ],
-    runsGo: true,
   },
   x86_64: {
     description: "64-bit x86 (v86_64 fork, experimental)",
@@ -46,7 +44,6 @@ export const MACHINES = {
       path.join(root, "build/kernel-x86_64/bzImage"),
       path.join(here, "x86_64/prebuilt/bzImage"),
     ],
-    runsGo: true,
   },
 };
 
@@ -54,7 +51,6 @@ export const MACHINES = {
  * @typedef {object} Machine
  * @property {string} arch          "i686" or "x86_64"
  * @property {string} description
- * @property {boolean} runsGo
  * @property {string} lib           JS side of the emulator (libv86.mjs)
  * @property {string} wasm          CPU + JIT
  * @property {string} wasmFallback  the same without SIMD/bulk memory
@@ -87,7 +83,6 @@ export function machine(arch, fallback = "i686") {
   return {
     arch,
     description: machine.description,
-    runsGo: machine.runsGo,
     lib: path.join(machine.emulatorDir, "libv86.mjs"),
     wasm: path.join(machine.emulatorDir, "v86.wasm"),
     wasmFallback: path.join(machine.emulatorDir, "v86-fallback.wasm"),

@@ -43,7 +43,7 @@ const mb = (/** @type {string} */ dir) => `${(size(dir) / 1e6).toFixed(1)} MB`;
 const { app, machine: m, origins: o } = ctx;
 console.log(`app:      ${name} (${app.title}): ${Object.entries(app.surfaces).map(([p, s]) => `${s} at ${p}`).join(", ")}`);
 console.log(`machine:  ${m.arch}, ${m.description}\n  emulator ${rel(path.dirname(m.wasm))}\n  kernel   ${rel(m.kernel)}`);
-console.log(`image:    ${rel(vm.base)}\nagent:    ${vm.agent ? rel(vm.agent) : "(the image's shell agent)"}\ntls:      ${rel(vm.tls)}`);
+console.log(`image:    ${rel(vm.base)}\nagent:    ${rel(vm.agent)}\ntls:      ${rel(vm.tls)}`);
 console.log(`playgrounds: ${vm.playgrounds.join(", ") || "none (npm run playgrounds)"}${app.start ? `; starts in ${app.start}` : ""}`);
 console.log(`gate:     ${app.gate === "web" ? `web${o.gate ? ` at ${o.gate} (embedded by ${o.ide})` : ""}` : "none (no network)"}`);
 if (o.preview) console.log(`previews: ${o.preview}`);

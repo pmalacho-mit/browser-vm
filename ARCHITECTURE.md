@@ -42,8 +42,7 @@ emulator. Identified by its architecture.
 | `x86_64` (experimental) | the v86_64 fork, vendored in `machines/x86_64/emulator/` | `machines/x86_64/kernel.config` |
 
 Contract: `machine(arch)` in `machines/index.mjs` resolves the emulator
-(`libv86.mjs`, `v86.wasm`), firmware and kernel, and says what the machine can
-run (`runsGo`: whether the Go guest agent works on it).
+(`libv86.mjs`, `v86.wasm`), firmware and kernel.
 
 ### 2. Images: what's on the computer's disk (`images/`)
 

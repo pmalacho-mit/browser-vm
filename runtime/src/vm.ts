@@ -84,13 +84,12 @@ export class LinuxVM {
     const net = (this.opts.network ?? "fetch") === "fetch";
     const snapshot = this.opts.snapshot;
     // Set by the build (tools/, from machines/index.mjs); unbundled (Node), the default machine.
-    const machine = typeof __VM_MACHINE__ !== "undefined" ? __VM_MACHINE__ : { arch: "i686", agent: true };
+    const machine = typeof __VM_MACHINE__ !== "undefined" ? __VM_MACHINE__ : { arch: "i686" };
     const arch = machine.arch;
     this.opts.log(`[vm] ${snapshot ? `restoring ${snapshot.url}` : "booting"} (${arch}): ${memoryMB} MiB RAM, network ${net ? "fetch()" : "off"}, assets from ${base}`);
     // The Go agent (runtime/guest/agent), written into the guest before a cold boot.
-    // A snapshot already has its agent running, so it isn't needed then. A machine
-    // that can't run Go programs ships none (machines/index.mjs, `runsGo`).
-    const agentP = snapshot || !machine.agent ? null : fetch(`${base}/vm-agent`)
+    // A snapshot already has its agent running, so it isn't needed then.
+    const agentP = snapshot ? null : fetch(`${base}/vm-agent`)
       .then(async (r) => (r.ok ? new Uint8Array(await r.arrayBuffer()) : null))
       .catch(() => null);
     // The TLS terminator downloads in parallel with the rest of the VM.
